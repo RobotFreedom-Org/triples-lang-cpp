@@ -1,0 +1,3 @@
+set v1 4;  
+set v2 3; 
+more v1 v2; 

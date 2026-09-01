@@ -1,0 +1,32 @@
+set v1 1;
+set v2 11;
+
+flow if start;
+equal v1 v2;
+echo testingA  ;
+flow if end;
+
+routine create test1;
+echo testingB ;
+routine create end;
+
+routine execute test1;
+
+routine create test2; 
+flow if start;
+equal v1 v2;
+echo testingC ;
+flow if end;
+routine create end;
+ 
+echo "test 1"
+routine execute test2;
+
+set v2 1; 
+echo "test 2"
+routine execute test2;
+
+
+
+
+

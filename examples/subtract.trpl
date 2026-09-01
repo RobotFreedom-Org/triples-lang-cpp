@@ -1,0 +1,3 @@
+set v1 4;  
+set v2 4; 
+subtract v1 v2 ;

@@ -1,0 +1,8 @@
+
+set v1 1;
+set v2 1;
+flow if start;
+equal v1 v2;
+echo hello s;
+flow if end;
+
