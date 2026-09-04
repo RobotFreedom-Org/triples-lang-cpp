@@ -25,26 +25,37 @@
 
  g++ -o triples_lang triples_lang.cpp
  ./triples_lang
+
+
 */
 
 
 #include <cstdio>
 #include <iostream>
 #include "struct.h"  
-    
+
+/**/
+#include "trpl_graph.cpp"  
+int choice, keyId ,  valueID ;
+string key , value;
+HashTableProp resps  ;
+HashTableProp props  ;
+HashTableEdge edges  ;    
+/**/
+
   
 const int MAX_CMD_LINES = 30;
 const int MAX_VAR_NAME  = 6; 
 const int MAX_BLOCKS    = 2;
-const int MAX_CMDS      = 4;  
-struct triplesspace::cmdsSVO BLOCKS[MAX_BLOCKS][MAX_CMDS];
+const int MAX_CMDS      = 4;   
+const int MAX_ROUTINES  = 3;
+const int MAX_F_CMDS    = 8; 
+const int MAX_MEM       = 10; 
 
-const int MAX_ROUTINES   = 3;
-const int MAX_F_CMDS   = 8; 
 char ROUTINESSNAMES[MAX_ROUTINES][MAX_VAR_NAME] ;
+struct triplesspace::cmdsSVO BLOCKS[MAX_BLOCKS][MAX_CMDS];
 struct triplesspace::cmdsSVO ROUTINES[MAX_ROUTINES][MAX_F_CMDS] ;
 
-const int MAX_MEM     = 10; 
 char MEMSTR[MAX_MEM][MAX_CMD_LINES] ;
 char MEMSTRNAME[MAX_MEM][MAX_VAR_NAME] ; 
 
@@ -56,7 +67,7 @@ char current_name[ MAX_VAR_NAME] ;
 
 int current_blocks = -1;
 int current_mem    = -1;
-int loaded_routine    = -1;
+int loaded_routine = -1;
   
 
 void initRoutine(int routineId) {
@@ -421,7 +432,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     if (strcmp(v, "lights")   == 0) {
       // PLace Holder  
     }
-  } else if (strcmp(v, "movmeent")   == 0 ) {
+  } else if (strcmp(v, "movement")   == 0 ) {
     if (strcmp(s, "torso")   == 0 ) {
       // Place Holder
     } else if (strcmp(s, "legs")   == 0) {
@@ -441,8 +452,75 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
   } else if (strcmp(v, "clear")  ==0){
     clearMemory(); 
     strcpy(output.o, "1");
+    
  
-  } else if (strcmp(v, "add")  ==0){
+  }   else if ( strcmp(v, "upper")   == 0) { 
+     
+      int _max = strlen(s) -1 ; 
+      char out[_max] ;
+      for (int i = 0; i <= _max; i++) {     
+         out[i] =  toupper(s[i]); 
+      }
+      strcpy(output.o, out);  
+
+  }   else if ( strcmp(v, "lower")   == 0) { 
+ 
+      int _max = strlen(s) -1 ; 
+      char out[_max] ;
+      for (int i = 0; i <= _max; i++) {     
+         out[i] =  tolower(s[i]); 
+      }
+      strcpy(output.o, out);  
+
+  }   else if ( strcmp(v, "replace")   == 0) { 
+
+       char* v1   =  getMemory(s);
+       char* _frm = std::strtok(o  , "->");  
+       char* _to  = std::strtok(NULL,"->");  
+
+       char frm[6];  
+       strcpy(frm, _frm);
+
+       char to[6];  
+       strcpy(to, _to);
+
+      // replace_char(v1, f, to); 
+       strcpy(output.o, s);  
+
+  }  else if (strcmp(v, "split")  ==0){ 
+
+       char* v1   =  getMemory(s); 
+       char* fin  = std::strtok(v1  , o);  
+      // s = std::strtok(NULL, " ");  
+      // o = std::strtok(NULL, " ");     
+       strcpy(output.o, fin);  
+     
+
+  }   else if ( strcmp(v, "join")   == 0) { 
+       char* v1 =  getMemory(s);
+       char* v2 =  getMemory(o);
+
+       int _max1 = strlen(s) ; 
+       int _max2 = strlen(o) ; 
+       int _max = _max1 + _max2;
+       char out[_max];
+
+       for (int i = 0; i <= _max1; i++) {     
+         out[i] =  s[i]; 
+       }
+
+       for (int i = 0; i <= _max2; i++) {     
+         out[i+_max1] =  o[i]; 
+       }
+
+       strcpy(output.o, out);  
+
+  }  else if ( strcmp(v, "element")   == 0) { 
+       char* v1 =  getMemory(s); 
+       char* fin = std::strtok(v1 , "|");  
+       strcpy(output.o, fin);  
+
+  }  else if (strcmp(v, "add")  ==0){
   
     char* v1 =  getMemory(s);
     char* v2 =  getMemory(o);  
@@ -541,7 +619,54 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     } else { 
       strcpy(output.o, "0");
     }
-  } 
+    /* Comment out for  */
+
+    } else if (strcmp(v, "knowledge")  == 0)   {
+
+      /*update remove query access, define */
+
+      if (strcmp(s, "add")  ==0)   {
+
+          char* _frm = std::strtok(o  , "->");  
+          char* _to  = std::strtok(NULL,"->");  
+          char* key   =  getMemory(_frm);
+          char* value =  getMemory(_to);  
+
+          keyId   = edges.nextID();
+          valueID = keyId + 1;
+          edges.insert(keyId, valueID);
+          edges.insert(valueID, keyId);
+          props.insert(keyId, key);
+          props.insert(valueID, value); 
+
+      } else if (strcmp(s, "key")  == 0)   {
+ 
+          int keyId =  atoi(o);  
+          int resp =  edges.search(keyId) ;  
+          snprintf(output.o, sizeof(output.o), "%i", resp);     
+
+      } else if (strcmp(s, "value")  == 0)   {
+          int keyId =  atoi(o);  
+          int resp =  edges.search(keyId) ;  
+          string fin = props.search(resp);
+          strcpy(output.o, fin.c_str()); 
+
+      } else if (strcmp(s, "match")  == 0)   { 
+
+          std::string key =  o;  
+          int keyId =  props.similar(key) ;  
+          std::string resp = props.search(keyId); 
+          strcpy(output.o, resp.c_str());  
+
+      } else if (strcmp(s, "response")  == 0)   { 
+          std::string key =  o;  
+          int keyId =  props.similar(key) ;  
+          int respId = edges.search(keyId) ; 
+          std::string resp = props.search(respId);     
+          strcpy(output.o, resp.c_str());  
+      }
+    
+     } 
 
   return output;
  
