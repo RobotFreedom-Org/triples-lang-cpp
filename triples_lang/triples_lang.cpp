@@ -1,5 +1,5 @@
 /*
- Arduino Triples-Lang 
+ CPP Triples-Lang 
 
  Copyright (c) 2026 RobotFreedom.org 
  Author: RobotFreedom.org  
@@ -24,23 +24,49 @@
  THE SOFTWARE.
 
  g++ -o triples_lang triples_lang.cpp
- ./triples_lang
-
+ ./triples_lang 
 
 */
 
 
 #include <cstdio>
 #include <iostream>
-#include "struct.h"  
+#include <numeric> 
+#include <set>
 
-/**/
+#include <map>
+#include "struct.h"  
+#include <stdexcept> 
 #include "trpl_graph.cpp"  
+
+#include "io.c"    
+#include "ml/dec_tree.cpp"    
+
+using namespace std;
+
 int choice, keyId ,  valueID ;
-string key , value;
-HashTableProp resps  ;
-HashTableProp props  ;
-HashTableEdge edges  ;    
+string key , value; 
+
+
+
+Node* LoadedDecTreeModel;
+  
+
+HashTableProp archive_db  ;
+HashTableEdge archive_edges  ;    
+ 
+HashTableProp    signals_db  ;
+HashTableSig     signals_flt_vect  ;
+HashTableSigStr  signals_str_vect  ; 
+
+HashTableProp svo_db  ; 
+HashTableAdjacency svo_links  ;    
+HashTableAdjacency s_v  ;    
+HashTableAdjacency v_o  ;    
+HashTableAdjacency o_s  ;    
+HashTableAdjacency s_o  ;    
+HashTableAdjacency v_s  ;    
+HashTableAdjacency o_v  ; 
 /**/
 
   
@@ -59,16 +85,17 @@ struct triplesspace::cmdsSVO ROUTINES[MAX_ROUTINES][MAX_F_CMDS] ;
 char MEMSTR[MAX_MEM][MAX_CMD_LINES] ;
 char MEMSTRNAME[MAX_MEM][MAX_VAR_NAME] ; 
 
-float  MEMFLT[MAX_MEM] ;
+float MEMFLT[MAX_MEM] ;
 char MEMFLTNAME[MAX_MEM][MAX_VAR_NAME] ; 
 
 char current_name[ MAX_VAR_NAME] ; 
-  
+   
+int current_blocks   = -1;
+int current_str_mem  = -1;
+int current_flt_mem  = -1;
+int loaded_routine   = -1;
 
-int current_blocks = -1;
-int current_mem    = -1;
-int loaded_routine = -1;
-  
+
 
 void initRoutine(int routineId) {
   int _max = MAX_CMDS - 1;
@@ -178,14 +205,13 @@ char* getMemory(char name[]) {
   char* res;
   return res;
 }  
-
 char setMemory(char name[], char value[]  ) { 
   
   int _id = getMemoryID(name);
   if (_id == -1)
   {  
-      current_mem ++ ;
-      _id = current_mem;
+      current_str_mem ++ ;
+      _id = current_str_mem;
   }  
   int _max = MAX_MEM -1;
   for (int i = 0; i < _max; i++) {  
@@ -193,6 +219,42 @@ char setMemory(char name[], char value[]  ) {
       MEMSTRNAME[_id][i] = name[i];
       MEMSTR[_id][i] = value[i];
   }  
+  return ' ';
+}  
+
+int getFltMemoryID(char name[]) {
+ 
+  int _max = MAX_MEM -1;
+  for (int i = 0; i < _max; i++) { 
+      if  (strcmp(MEMFLTNAME[i], name)  == 0 ) { 
+        return  i; 
+    }
+  }
+  return  -1;
+}  
+
+float getFltMemory(char name[]) {  
+  int _id = getFltMemoryID(name);
+  if (_id != -1)
+  {   
+         return MEMFLT[_id];  
+  }
+  return -1;
+}  
+char setFltMemory(char name[], float value   ) { 
+  
+  int _id = getFltMemoryID(name);
+  if (_id == -1)
+  {  
+      current_flt_mem ++ ;
+      _id = current_flt_mem;
+  }  
+  int _max = MAX_MEM -1;
+  for (int i = 0; i < _max; i++) {   
+      MEMFLTNAME[_id][i] = name[i];
+  }  
+
+   MEMFLT[_id] = value;
   return ' ';
 }  
  
@@ -213,7 +275,8 @@ char clearMemory( ) {
       MEMSTRNAME[i][0]= {0};
       MEMSTR[i][0] = {0}; 
    }
-  current_mem = -1;
+  current_str_mem = -1;
+  current_flt_mem = -1;
   return ' ';
 }  
 
@@ -284,6 +347,7 @@ struct triplesspace::SVO dispatcher(char *v, char *s, char *o) {
  
   strcpy(output.s, ""); 
   strcpy(output.v, ""); 
+
   strcpy(output.o, "");  
 
 
@@ -356,9 +420,18 @@ struct triplesspace::SVO dispatcher(char *v, char *s, char *o) {
     }
 
   } else {
-    return core(v, s, o);
-  }  
+     // try {
+        return core(v, s, o);
+     //   }
+    // catch (const std::runtime_error& e) {
+      //  std::cerr << "Caught runtime_error: " << e.what() << std::endl;
+        
+      //   return  output; 
+     //  } 
+    }
+  
 }  
+   
 
 /* 
 // TODO- short hand to min char size in memeory
@@ -439,15 +512,28 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
       //Place Holder
     }
   } else if (strcmp(v, "set")   == 0 ){ 
-  
+   
     char t =  setMemory(s,  o); 
     strcpy(output.o, " "); 
  
   } else if (strcmp(v, "get")  ==0){
  
-    char* _t = getMemory(s);   
+ 
+    char* _t = getMemory(s);    
+    char res[MAX_MEM-1];
+    strcpy(res, _t); 
+    strcpy(output.o, res); 
 
-    strcpy(output.o, _t); 
+  } else if (strcmp(v, "put")   == 0 ){ 
+  
+    float fo =  atof(o);  
+    float t =  setFltMemory(s,  fo); 
+    strcpy(output.o, " "); 
+ 
+  } else if (strcmp(v, "pull")  ==0){
+   
+    float f1 =  getFltMemory(s);    
+    snprintf(output.o, sizeof(output.o), "%f", f1);  
 
   } else if (strcmp(v, "clear")  ==0){
     clearMemory(); 
@@ -619,12 +705,224 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     } else { 
       strcpy(output.o, "0");
     }
-    /* Comment out for  */
 
-    } else if (strcmp(v, "knowledge")  == 0)   {
+   } else if (strcmp(v, "encoding")  ==0)     {
+
+      if (strcmp(s, "bin")  ==0)   {
+      
+     } else if (strcmp(s, "ohe")  == 0)   {
+ 
+     } else if (strcmp(s, "fuzzy")  == 0)   {
+
+     } else if (strcmp(s, "image")  == 0)   {
+
+     } else if (strcmp(s, "sound")  == 0)   {
+
+     }
+     
+   } else if (strcmp(v, "normalizing") ==0) {
+
+     if (strcmp(s, "extremes")  ==0)   {
+      
+     } else if (strcmp(s, "euclidian")  == 0)   {
+ 
+     } else if (strcmp(s, "fuzzy")  == 0)   {
+
+     }
+
+   } else if (strcmp(v, "learn")  ==0)   {
+
+
+     if (strcmp(s, "save")  ==0)   {
+ 
+        int trees = 0;
+        string model = dectree_repr(LoadedDecTreeModel); 
+        ofstream outFile("tree.json"); 
+        
+        outFile << "{\n"; 
+        outFile << model; 
+        outFile << "}\n"; 
+        outFile.close();
+
+
+     } else if (strcmp(s, "load")  ==0)   {
+
+     } else if (strcmp(s, "dectree")  ==0)   {
+
+        char* _features = std::strtok(o  , "->");  
+        char* _label    = std::strtok(NULL,"->");   
+
+
+        vector<map<string, string>> data;
+        vector<string> labels;  
+        set<string> features;
+        std::map<string, string> vecMap;
+        
+        char *buffer ;
+        buffer = strtok(_features, "|");    
+        int keyId = signals_db.exists(buffer)  ; 
+
+        vector<string>  vals = signals_str_vect.retrieve(keyId) ;  
+        for (auto& val:vals) {
+            vecMap[buffer] = val;
+            data.emplace_back(vecMap); 
+         } 
+ 
+        features.insert(buffer) ;  
+        buffer = strtok(NULL,"|");
+
+        //stack<vector<int>> myStack; // stack of vectors
+        int i_rec = -1;
+        while (buffer !=NULL)
+           {    
+             keyId = signals_db.exists(buffer)  ;  
+             vals = signals_str_vect.retrieve(keyId) ; 
+             i_rec = 0;
+             for (auto& val:vals) {
+                vecMap[buffer] = val;
+               // data..insert(data.begin() + i_rec, vecMap);
+                data[i_rec].insert({buffer, val});
+                i_rec++;
+             }
+  
+             features.insert(buffer) ;  
+             buffer = strtok(NULL,"|");
+           
+           }
+ 
+
+        keyId = signals_db.exists(_label)  ;   
+        labels = signals_str_vect.retrieve(keyId)  ;    
+        LoadedDecTreeModel = dectree_fit(data, labels, features);  
+
+     } else if (strcmp(s, "decent")  == 0)   {
+
+
+     } else if (strcmp(s, "neural")  == 0)   {
+
+ 
+     } else if (strcmp(s, "deep")  == 0)   {
+
+
+     }
+     
+   } else if (strcmp(v, "reason")  ==0)   {
+
+     if (strcmp(s, "present")  ==0)   {
+
+     } else if (strcmp(s, "future")  == 0)   {
+
+     } else if (strcmp(s, "past")  == 0)   {
+
+     } else if (strcmp(s, "dectree")  == 0)   { 
+
+
+         std::map<string, string> data;
+ 
+         
+         FILE *filePtr;
+         cout << "file: " << o  << endl;
+         filePtr = fopen(o, "r"); 
+         char currentline[1000];
+         int lcnt = 0;
+         const char *delim = "," ;
+         char *buffer ;
+
+         int cols = 0;
+         string header[100];
+         string colname ;
+         string soutput;
+
+         while (fgets(currentline , 1000, filePtr))
+          {      
+            /*Increment line count*/   
+            size_t len = strlen(currentline);
+            if (len > 0 && currentline[len - 1] == '\n') {
+                      currentline[len - 1] = '\0';
+            }
+           if (lcnt  ==0)
+           {
+                buffer = strtok(currentline, delim);     
+                header[cols] = buffer; 
+                cols ++;
+
+                buffer = strtok(NULL, delim);
+                while (buffer !=NULL)
+                 {      
+                    header[cols] = buffer;   
+                    cols ++;  
+                    buffer = strtok(NULL,delim);
+                 } 
+           }
+           else
+           {
+              cols = 0;
+              buffer = strtok(currentline, delim); 
+              colname = header[cols];     
+              keyId = signals_db.exists(colname)  ;   
+              data.insert({colname,buffer});  
+              buffer = strtok(NULL,delim);
+              while (buffer !=NULL)
+                 {   
+ 
+                    cols ++;
+                    colname = header[cols];  
+                    data.insert({colname,buffer});     
+                    buffer = strtok(NULL,delim); 
+                 }  
+
+           }
+
+           string results = dectree_inference(LoadedDecTreeModel, data);  
+           soutput.append(results);
+           soutput.append("|");
+           cout << results  << endl;  
+           data.clear();
+           lcnt++;
+
+          }
+         
+      snprintf(output.o, sizeof(output.o), "%i",lcnt);   
+
+     }
+
+
+   } else if (strcmp(v, "plans")  ==0)   {
+      // Rules engine 
+      //define 
+      //layout
+      //alter
+      //execute
+      //activate
+      //implement
+    
+
+   } else if (strcmp(v, "file")  == 0)   {
+
+    if (strcmp(s, "read")  ==0)   {
+
+        FILE *filePtr;      
+        filePtr = fopen(o, "r");  
+        select(filePtr);
+
+     } else if (strcmp(s, "sort")  == 0)   {
+
+        FILE *filePtr;     
+        filePtr = fopen(o, "r");   
+        sort(filePtr); 
+
+     } else if (strcmp(s, "delete")  == 0)   {
+
+        FILE *filePtr;     
+        filePtr = fopen(o, "r");     
+      //  remove_rec(filePtr, '1'); 
+
+     }
+
+   } else if (strcmp(v, "archive")  == 0)   {
 
       /*update remove query access, define */
-
+ 
       if (strcmp(s, "add")  ==0)   {
 
           char* _frm = std::strtok(o  , "->");  
@@ -632,39 +930,497 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
           char* key   =  getMemory(_frm);
           char* value =  getMemory(_to);  
 
-          keyId   = edges.nextID();
+          keyId   = archive_edges.nextID();
           valueID = keyId + 1;
-          edges.insert(keyId, valueID);
-          edges.insert(valueID, keyId);
-          props.insert(keyId, key);
-          props.insert(valueID, value); 
-
-      } else if (strcmp(s, "key")  == 0)   {
+          archive_edges.insert(keyId, valueID);
+          archive_edges.insert(valueID, keyId);
+          archive_db.insert(keyId, key);
+          archive_db.insert(valueID, value); 
  
-          int keyId =  atoi(o);  
-          int resp =  edges.search(keyId) ;  
-          snprintf(output.o, sizeof(output.o), "%i", resp);     
-
-      } else if (strcmp(s, "value")  == 0)   {
-          int keyId =  atoi(o);  
-          int resp =  edges.search(keyId) ;  
-          string fin = props.search(resp);
-          strcpy(output.o, fin.c_str()); 
-
-      } else if (strcmp(s, "match")  == 0)   { 
-
+     } else if (strcmp(s, "exists")  == 0)   {
           std::string key =  o;  
-          int keyId =  props.similar(key) ;  
-          std::string resp = props.search(keyId); 
+          int keyId =  archive_db.exists(key);  
+          snprintf(output.o, sizeof(output.o), "%i", keyId);   
+
+     } else if (strcmp(s, "retrieve")  == 0)   { 
+          int keyId =  atoi(o);   
+          std::string resp  = archive_db.retrieve(keyId);  
+          strcpy(output.o, resp.c_str());  
+ 
+      } else if (strcmp(s, "definition")  == 0)   {   
+          std::string key =  o;  
+          int keyId =  archive_db.exists(key) ;   
+          int respId = archive_edges.retrieve(keyId) ;  
+          std::string resp = archive_db.retrieve(respId);     
           strcpy(output.o, resp.c_str());  
 
-      } else if (strcmp(s, "response")  == 0)   { 
-          std::string key =  o;  
-          int keyId =  props.similar(key) ;  
-          int respId = edges.search(keyId) ; 
-          std::string resp = props.search(respId);     
+      } else if (strcmp(s, "similar")  == 0)   { 
+ 
+          std::string key =  o;   
+          int keyId =  archive_db.similar(key) ;    
+          int respId = archive_edges.retrieve(keyId) ;   
+          std::string resp = archive_db.retrieve(respId);    
           strcpy(output.o, resp.c_str());  
+
+      }else if (strcmp(s, "linked")  == 0)   { 
+          std::string key =  o;  
+          int keyId =  archive_db.similar(key) ;  
+          int respId = archive_edges.retrieve(keyId) ;  
       }
+ 
+    } else if (strcmp(v, "records")  == 0)   {
+
+      int keyId  ;    
+      if (strcmp(s, "add")  ==0)   {
+
+          char* _frm = std::strtok(o  , "->");  
+          char* _to  = std::strtok(NULL,"->");    
+ 
+          keyId   = signals_db.nextID();   
+          signals_db.insert(keyId,  _frm )  ;
+          signals_str_vect.insert(keyId, _to );    
+       
+
+      } else if (strcmp(s, "load")  == 0)  { 
+
+         FILE *filePtr;
+         cout << "file: " << o  << endl;
+         filePtr = fopen(o, "r"); 
+         char currentline[1000];
+         int lcnt = 0;
+         const char *delim = "," ;
+         char *buffer ;
+
+         int cols = 0;
+         string header[100];
+         string colname ;
+
+         while (fgets(currentline , 1000, filePtr))
+          {      
+            /*Increment line count*/   
+            size_t len = strlen(currentline);
+            if (len > 0 && currentline[len - 1] == '\n') {
+                      currentline[len - 1] = '\0';
+            }
+           if (lcnt  ==0)
+           {
+                buffer = strtok(currentline, delim);   
+
+               // cout << buffer  << endl;
+
+                keyId   = signals_db.nextID();   
+                signals_db.insert(keyId,  buffer )  ;
+                header[cols] = buffer; 
+                cols ++;
+
+                buffer = strtok(NULL, delim);
+                while (buffer !=NULL)
+                 {      
+                    header[cols] = buffer;    
+                    keyId   = signals_db.nextID();   
+                    signals_db.insert(keyId,  buffer )  ;
+                    cols ++;  
+                    buffer = strtok(NULL,delim);
+                 } 
+           }
+           else
+           {
+             cols = 0;
+             buffer = strtok(currentline, delim); 
+             colname = header[cols];    
+             keyId = signals_db.exists(colname)  ;  
+             signals_str_vect.insert(keyId, buffer );    
+
+              buffer = strtok(NULL,delim);
+              cout << buffer  << endl;
+              while (buffer !=NULL)
+                 {   
+ 
+                    cols ++;
+                    colname = header[cols];
+                    keyId = signals_db.exists(colname)  ;  
+                    signals_str_vect.insert(keyId, buffer );      
+                    buffer = strtok(NULL,delim); 
+                 }  
+
+           }
+           lcnt++;
+
+          }
+         
+      snprintf(output.o, sizeof(output.o), "%i",lcnt);  
+     //  strcpy(output.o, "1");
+
+ 
+     } else if (strcmp(s, "exists")  == 0)   {  
+
+          keyId = signals_db.exists(o)  ;  
+        //  string key  =  signals_flt_vect.exists(o);  
+        //   snprintf(output.o, sizeof(output.o), "%s", key.c_str());   
+          snprintf(output.o, sizeof(output.o), "%i", keyId);   
+
+     } else if (strcmp(s, "last")  == 0)   {  
+ 
+             keyId = signals_db.exists(o)  ;  
+             vector<string> resp  = signals_str_vect.retrieve(keyId);  
+             string val =  resp.back();
+             snprintf(output.o, sizeof(output.o), "%s",val.c_str());   
+
+     } else if (strcmp(s, "first")  == 0)    { 
+          
+
+             keyId = signals_db.exists(o)  ;  
+             vector<string> resp  = signals_str_vect.retrieve(keyId);  
+             string val =  resp.back();
+             snprintf(output.o, sizeof(output.o), "%s", val.c_str());   
+             
+
+     } else if (strcmp(s, "distance")  == 0)   { 
+          int keyId =  atoi(o);   
+          // int index = std::distance(v.begin(), it) 
+          // snprintf(output.o, sizeof(output.o), "%f", resp.back());   
+    
+     } else if (strcmp(s, "count")  == 0)   {  
+          keyId = signals_db.exists(o)  ;  
+          vector<float> resp  = signals_flt_vect.retrieve(keyId);   
+          snprintf(output.o, sizeof(output.o), "%zu",resp.size());   
+ 
+ 
+      } else if (strcmp(s, "fusison")  == 0)   {   
+           //should be nested array for TS
+
+      } else if (strcmp(s, "compress")  == 0)   {   
+           //should be nested array for TS
+      } else if (strcmp(s, "similar")  == 0)   {  
+
+      }else if (strcmp(s, "linked")  == 0)   {  
+
+      }
+
+
+    } else if (strcmp(v, "signals")  == 0)   {
+
+      int keyId  ;    
+      if (strcmp(s, "add")  ==0)    {
+
+          char* _frm = std::strtok(o  , "->");  
+          char* _to  = std::strtok(NULL,"->");    
+ 
+          keyId   = signals_db.nextID();   
+          signals_db.insert(keyId,  _frm )  ;
+           float fvalue =  atof(_to);    
+
+      } else if (strcmp(s, "load")  == 0)   { 
+
+         FILE *filePtr;
+         cout << "file: " << o  << endl;
+         filePtr = fopen(o, "r"); 
+         char currentline[1000];
+         int lcnt = 0;
+         const char *delim = "," ;
+         char *buffer ;
+
+         int cols = 0;
+         string header[100];
+         string colname ;
+
+         while (fgets(currentline , 1000, filePtr))
+          {      
+            /*Increment line count*/   
+            size_t len = strlen(currentline);
+            if (len > 0 && currentline[len - 1] == '\n') {
+                      currentline[len - 1] = '\0';
+            }
+           if (lcnt  ==0)
+           {
+                buffer = strtok(currentline, delim);   
+
+               // cout << buffer  << endl;
+
+                keyId   = signals_db.nextID();   
+                signals_db.insert(keyId,  buffer )  ;
+                header[cols] = buffer; 
+                cols ++;
+
+                buffer = strtok(NULL, delim);
+                while (buffer !=NULL)
+                 {      
+                    header[cols] = buffer;  
+
+                    keyId   = signals_db.nextID();   
+                    signals_db.insert(keyId,  buffer )  ;
+                    cols ++;  
+                    buffer = strtok(NULL,delim);
+                 } 
+           }
+           else
+           {
+             cols = 0;
+             buffer = strtok(currentline, delim); 
+             colname = header[cols];    
+             float fvalue =  atof(buffer);   
+             keyId = signals_db.exists(colname)  ;  
+             signals_flt_vect.insert(keyId, fvalue );   
+
+              buffer = strtok(NULL,delim);
+              cout << buffer  << endl;
+              while (buffer !=NULL)
+                 {   
+ 
+                    cols ++;
+                    colname = header[cols]; 
+                    float fvalue =  atof(buffer);   
+                    keyId = signals_db.exists(colname)  ;  
+                    signals_flt_vect.insert(keyId, fvalue );   
+                    buffer = strtok(NULL,delim); 
+                 }  
+
+           }
+           lcnt++;
+
+          }
+         
+      snprintf(output.o, sizeof(output.o), "%i",lcnt);  
+     //  strcpy(output.o, "1");
+
+ 
+     } else if (strcmp(s, "exists")  == 0)   {  
+
+          keyId = signals_db.exists(o)  ;  
+        //  string key  =  signals_flt_vect.exists(o);  
+        //   snprintf(output.o, sizeof(output.o), "%s", key.c_str());   
+          snprintf(output.o, sizeof(output.o), "%i", keyId);   
+
+     } else if ((strcmp(s, "last")  == 0)  || (strcmp(s, "last->string")  == 0) )  {  
+
+          if (strcmp(s, "last->string")  == 0)
+          { 
+ 
+             keyId = signals_db.exists(o)  ;  
+             vector<string> resp  = signals_str_vect.retrieve(keyId);  
+             string val =  resp.back();
+             snprintf(output.o, sizeof(output.o), "%s",val.c_str());  
+          } 
+          else 
+          {
+             keyId = signals_db.exists(o)  ;  
+             vector<float> resp  = signals_flt_vect.retrieve(keyId);    
+             snprintf(output.o, sizeof(output.o), "%f", resp.back());   
+          }
+
+     } else if ((strcmp(s, "first")  == 0)  || (strcmp(s, "first->string")  == 0) )  { 
+         
+
+          if (strcmp(s, "first->string")  == 0)
+          { 
+
+             keyId = signals_db.exists(o)  ;  
+             vector<string> resp  = signals_str_vect.retrieve(keyId);  
+             string val =  resp.back();
+             snprintf(output.o, sizeof(output.o), "%s", val.c_str());  
+          } 
+          else 
+          {
+             keyId = signals_db.exists(o)  ;  
+             vector<float> resp  = signals_flt_vect.retrieve(keyId);   
+             snprintf(output.o, sizeof(output.o), "%f", resp.front());   
+          }
+          
+     } else if (strcmp(s, "sum")  == 0)   {  
+          keyId = signals_db.exists(o)  ;  
+          vector<float> resp  = signals_flt_vect.retrieve(keyId);   
+          int sum = std::accumulate(resp.begin(), resp.end(), 0);
+          snprintf(output.o, sizeof(output.o), "%i", sum);   
+ 
+     } else if (strcmp(s, "mean")  == 0)   {  
+          keyId = signals_db.exists(o)  ;  
+          vector<float> resp  = signals_flt_vect.retrieve(keyId);    
+          int sum = std::accumulate(resp.begin(), resp.end(), 0);
+
+          float mean =  sum / resp.size();
+
+          snprintf(output.o, sizeof(output.o), "%f", mean);   
+ 
+     } else if (strcmp(s, "minimum")  == 0)   {  
+          keyId = signals_db.exists(o)  ;  
+          vector<float> resp  = signals_flt_vect.retrieve(keyId);  
+          auto it = std::min_element(resp.begin(), resp.end()); 
+          snprintf(output.o, sizeof(output.o), "%f", *it);   
+
+     } else if (strcmp(s, "maximum")  == 0)   {  
+          keyId = signals_db.exists(o)  ;  
+          vector<float> resp  = signals_flt_vect.retrieve(keyId);   
+          auto it = std::max_element(resp.begin(), resp.end());  
+          snprintf(output.o, sizeof(output.o), "%f", *it);   
+
+     } else if (strcmp(s, "distance")  == 0)   { 
+          int keyId =  atoi(o);   
+          // int index = std::distance(v.begin(), it) 
+          // snprintf(output.o, sizeof(output.o), "%f", resp.back());   
+  
+
+     } else if (strcmp(s, "varience")  == 0)   {  
+          keyId = signals_db.exists(o)  ;  
+          vector<float> resp  = signals_flt_vect.retrieve(keyId);   
+          snprintf(output.o, sizeof(output.o), "%f", resp.back());   
+
+     } else if (strcmp(s, "count")  == 0)   {  
+          keyId = signals_db.exists(o)  ;  
+          vector<float> resp  = signals_flt_vect.retrieve(keyId);   
+          snprintf(output.o, sizeof(output.o), "%zu",resp.size());   
+ 
+ 
+      } else if (strcmp(s, "fusison")  == 0)   {   
+           //should be nested array for TS
+
+      } else if (strcmp(s, "compress")  == 0)   {   
+           //should be nested array for TS
+      } else if (strcmp(s, "similar")  == 0)   {  
+
+      }else if (strcmp(s, "linked")  == 0)   {  
+
+      }
+ 
+     
+ 
+     
+    } else if (strcmp(v, "knowledge")  == 0)   {
+ 
+      if (strcmp(s, "add")  ==0)   {
+
+           // char* key   =  getMemory(_frm);
+           // char* value =  getMemory(_to);  
+
+           string _svo  =std::string(o  );  
+
+           char* _s  = std::strtok(o  , "|");  
+           char* _v  = std::strtok(NULL,"|");  
+           char* _o  = std::strtok(NULL,"|");  
+
+           char* _output  = std::strtok(NULL,"->");  
+
+           int _s_id;
+           int _v_id;
+           int _o_id;
+           int _link_id;
+
+           _s_id  = svo_db.nextID();
+           _v_id  = _s_id +1;
+           _o_id  = _v_id +1;
+           _link_id  = _o_id +1;
+    
+           svo_db.insert(_s_id, _s);   
+           svo_db.insert(_v_id, _v); 
+           svo_db.insert(_o_id, _o);    
+           svo_db.insert(_link_id, _svo);    
+
+           s_v.insert(_s_id, _v_id); 
+           v_o.insert(_v_id, _o_id);      
+           o_s.insert(_o_id, _s_id);      
+           s_o.insert(_s_id, _o_id);     
+           v_s.insert(_v_id, _s_id);    
+           o_v.insert(_o_id, _v_id);   
+
+      } else if (strcmp(s, "remove")  ==0)   {
+
+      } else if (strcmp(s, "exists")  ==0)   {
+ 
+           std::string in_o  = o;   
+           int _s_id;  
+           _s_id = svo_db.exists(in_o);
+           snprintf(output.o, sizeof(output.o), "%i", _s_id);   
+
+
+      } else if (strcmp(s, "link")  ==0)   {
+
+           char* _to    = std::strtok(o  , "->");  
+           char* _from  = std::strtok(NULL,"->");  
+           int i_to    =  atoi(_to);  
+           int i_from  =  atoi(_from);  
+           svo_links.insert(i_to, i_from);
+           svo_links.insert(i_from, i_to);
+           strcpy(output.o, "1");
+
+ 
+      } else if (strcmp(s, "similar")  == 0)   { 
+        ///all entries similarto to svo
+ 
+      } else if (strcmp(s, "closest")  == 0)   { 
+          // one object bext match 
+
+           char* _s  = std::strtok(o  , "|");  
+           char* _v  = std::strtok(NULL,"|");  
+           char* _o  = std::strtok(NULL,"|");  
+
+           std::string in_s  =  _s;  
+           std::string in_v  =  _v;  
+           std::string in_o  =  _o;   
+          // char* _output  = std::strtok(NULL,"->");  
+
+           int _s_id;  
+            try 
+            {
+              _s_id = svo_db.exists(in_s); 
+            }
+            catch (const std::runtime_error& e) {
+ 
+                  std::cerr << "Error: " << e.what() << std::endl;
+              
+            }
+
+            vector<int> _v_ids ;
+
+            try 
+            { 
+                _v_ids = s_v.retrieve(_s_id); 
+            }
+            catch (const std::runtime_error& e) { 
+                  std::cerr << "Error 2: " << e.what() << std::endl;
+                 
+            }
+
+
+
+           int _v_id = _v_ids.front(); 
+
+           string v = svo_db.retrieve(_v_id);
+           if (in_v == v)
+           {  
+               vector<int> _o_ids;
+
+               try {
+                    _o_ids = v_o.retrieve(_v_id); 
+                   }
+                catch (const std::runtime_error& e) { 
+ 
+                   std::cerr << "Error 3: " << e.what() << std::endl; 
+               }
+
+               int _o_id = _o_ids.front(); 
+               string o = svo_db.retrieve(_o_id);
+ 
+               strcpy(output.s, in_s.c_str());
+               strcpy(output.v, v.c_str());
+               strcpy(output.o, o.c_str());   
+              }
+          
+      } else if (strcmp(s, "related")  == 0)   { 
+         //one objevt lin to best match for svo
+         // std::string key =  o;  
+         // int keyId =  props.similar(key) ;  
+         // int respId = edges.search(keyId) ; 
+         // std::string resp = props.search(respId);     
+         // strcpy(output.o, resp.c_str());   
+
+      } else if (strcmp(s, "relatives")  == 0)   { 
+         //alll object lin to best match for svo
+         // std::string key =  o;  
+         // int keyId =  props.similar(key) ;  
+         // int respId = edges.search(keyId) ; 
+         // std::string resp = props.search(respId);     
+         // strcpy(output.o, resp.c_str());  
+      }
+ 
     
      } 
 
@@ -681,14 +1437,47 @@ void replace_char(char *str, char find, char replace) {
     }
 }
  
+/*
+  g++ -o triples_lang triples_lang.cpp
+./triples_lang 2>err.log
 
+put t 6.77;
+pull t;
+
+set r hi;
+set p  meow;
+archive add r->p;
+archive definition hi;
+
+signals add 1->9;
+signals add 1->4;
+signals count 1;
+signals sum 1;
+signals last 1;
+
+knowledge add me|love|cat;
+knowledge exists me|love|cat;
+knowledge closest me|love|dog;
+
+
+
+*/
 
 int main(int argc, char* argv[]) {
     
-    std::string input;
-
+ 
+    if (argc > 1)
+    { 
+        FILE *filePtr;     
+        filePtr = stdin;  
+        sort(filePtr);
+        //select(filePtr);
+    } 
+    else
+    {
+    
+    std::string input; 
     std::cout << "Triples-Lang (type 'help;' for commands, 'exit;' to quit)\n";
-
     while (true) {
         std::cout << "> "; // Prompt
         if (!std::getline(std::cin, input)) {
@@ -699,7 +1488,7 @@ int main(int argc, char* argv[]) {
 
         // Convert to lowercase for case-insensitive commands
         std::string cmd = input;
-        std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
+        //std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
 
         if (cmd == "exit;") {
             std::cout << "Goodbye!\n";
@@ -724,19 +1513,37 @@ int main(int argc, char* argv[]) {
              char* cstr = new char[cmd.length() + 1];
              strcpy(cstr, cmd.c_str());
 
-             v = std::strtok(cstr  , " ");  
+             v = std::strtok(cstr, " ");  
              s = std::strtok(NULL, " ");  
-             o = std::strtok(NULL, " ");     
+             try
+             {
+                 o = std::strtok(NULL, " ");   
+             }
+             catch(const std::exception& e)
+             { 
+                o = new char[cmd.length() + 1];
+             }
+               
      
              replace_char(v,';', '\0'); 
              replace_char(s,';', '\0'); 
-             replace_char(o,';', '\0');  
+             try
+             {
+                 replace_char(o,';', '\0');  
+             }
+             catch(const std::exception& e)
+             {  
+                o = new char[cmd.length() + 1];
+             }
+               
+     
 
              struct triplesspace::SVO results =dispatcher(v,s,o); 
              // std::cout << results.o;
-             std::cout <<  results.o << std::endl;
+             std::cout <<  results.s << "|" << results.v << "|" << results.o << std::endl;
         }
     }
 
     return 0;
+  }
 } 

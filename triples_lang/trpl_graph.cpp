@@ -2,8 +2,12 @@
 #include <list>
 #include <string>
 #include <stdexcept> 
+#include <vector> 
+#include <sstream> 
+#include <type_traits>
 
 using namespace std;
+ 
 
 double stringSimilarity(std::string first, std::string second) {
     int m = first.length();
@@ -17,12 +21,13 @@ double stringSimilarity(std::string first, std::string second) {
                       std::min(T[i-1][j] + 1, std::min(T[i][j-1] + 1, T[i-1][j-1] + 1));
     return (m + n - T[m][n]) / (m + n);
 }
-
+ 
 
 class HashTableProp {
 private:
     static const int TABLE_SIZE = 100; // Fixed size for simplicity
     list<pair<int, string>> table[TABLE_SIZE]; // Array of lists for chaining
+    int CURRENTID = -1;
 
     // Simple hash function
     int hashFunction(int key) const {
@@ -30,6 +35,11 @@ private:
     }
  
 public:
+    // Insert key-value pair
+    int nextID( ) {
+       CURRENTID ++;
+       return CURRENTID  ;
+    }
     // Insert key-value pair
     void insert(int key, const string &value) {
         int index = hashFunction(key);
@@ -48,8 +58,21 @@ public:
         cout << "Inserted (" << key << ", " << value << ") into hash table.\n";
     }
 
+    // Remove a key-value pair
+    void remove(int key) {
+        int index = hashFunction(key);
+        for (auto it = table[index].begin(); it != table[index].end(); ++it) {
+            if (it->first == key) {
+                table[index].erase(it);
+                cout << "Removed key " << key << " from hash table.\n";
+                return;
+            }
+        }
+        cout << "Key " << key << " not found.\n";
+    }
+
     // Search for a value by key
-    string search(int key) const {
+    string retrieve(int key) const {
         int index = hashFunction(key);
         for (const auto &kv : table[index]) {
             if (kv.first == key) {
@@ -58,7 +81,19 @@ public:
         }
         throw runtime_error("Key not found.");
     }
- 
+  
+    //  returns id for match
+    int exists(string value) const {  
+        for (int i = 0; i <  10; i++) {  
+           for (const auto &kv : table[i]) {  
+              if (value == kv.second) {
+                  return kv.first;
+              }
+            } 
+        }
+      return -1;
+    }
+
     // Search for a value by value similarity
     int similar(string value) const { 
 
@@ -76,18 +111,6 @@ public:
       return -1;
     }
 
-    // Remove a key-value pair
-    void remove(int key) {
-        int index = hashFunction(key);
-        for (auto it = table[index].begin(); it != table[index].end(); ++it) {
-            if (it->first == key) {
-                table[index].erase(it);
-                cout << "Removed key " << key << " from hash table.\n";
-                return;
-            }
-        }
-        cout << "Key " << key << " not found.\n";
-    }
 
     // Display the hash table
     void display() const {
@@ -136,7 +159,7 @@ public:
     }
 
     // Search for a value by key
-    int search(int key) const {
+    int retrieve(int key) const {
         int index = hashFunction(key);
         for (const auto &kv : table[index]) {
             if (kv.first == key) {
@@ -169,6 +192,263 @@ public:
             cout << "NULL\n";
         }
     }
+};
+
+
+class HashTableAdjacency{ 
+
+private:
+    static const int TABLE_SIZE = 10; // Fixed size for simplicity
+    static const int VECT_SIZE  = 1000; // Fixed size for simplicity
+    int CURRENTID = -1;
+
+    using PairType = std::pair<int, std::vector<int>>;
+    std::list<PairType> table[TABLE_SIZE]; 
+ 
+   // list<pair<int, vector<float> >> table[TABLE_SIZE]; // Array of lists for chaining 
+
+    // Simple hash function
+    int hashFunction(int key) const {
+        return key % TABLE_SIZE;
+    }
+
+public:
+    // Insert key-value pair
+    int nextID( ) {
+       return CURRENTID + 1;
+    }
+
+    void insert(int key, int value) {
+
+        int index = hashFunction(key);
+
+        // Check if key already exists, update value if found
+        for (auto &kv : table[index]) {
+            if (kv.first  == key) { 
+                if (kv.second.size() >0) {
+                    kv.second.push_back( value);
+                    cout << "Updated key " << key << " with new value.\n";
+                    return;
+                }
+            } 
+        }
+
+        PairType p;
+        p.first = key;
+        //p.second.resize(1000, 0.0f); // Fill with 0.5
+        p.second.push_back( value);
+        table[index].push_back(p); 
+        cout << "Inserted (" << key << ", " << value << ") into hash table.\n";
+    }
+
+
+    // Remove a key-value pair
+    void remove(int key) {
+        int index = hashFunction(key);
+        for (auto it = table[index].begin(); it != table[index].end(); ++it) {
+            if (it->first == key) {
+                table[index].erase(it);
+                cout << "Removed key " << key << " from hash table.\n";
+                return;
+            }
+        }
+        cout << "Key " << key << " not found.\n";
+    }
+
+    // Search for a value by key
+    int exists(int key) const {
+        int index = hashFunction(key);
+        for (const auto &kv : table[index]) {
+           // if (kv.second == key) {
+                return kv.first;
+        //    }
+        }
+        throw runtime_error("Key not found.");
+    }
+
+    // Search for a value by key
+    vector<int> retrieve(int key) const {
+
+        int index = hashFunction(key);
+        for (const auto &kv : table[index]) {
+            if (kv.first == key) {
+                return kv.second;
+            }
+        }
+        throw runtime_error("Key not found.");
+    } 
+
+};
+
+
+class HashTableSig{
+
+private:
+    static const int TABLE_SIZE = 10; // Fixed size for simplicity
+    static const int VECT_SIZE  = 1000; // Fixed size for simplicity
+    int CURRENTID = -1;
+
+    using PairType = std::pair<int, std::vector<float>>;
+    std::list<PairType> table[TABLE_SIZE];
+
+ 
+   // list<pair<int, vector<float> >> table[TABLE_SIZE]; // Array of lists for chaining 
+
+    // Simple hash function
+    int hashFunction(int key) const {
+        return key % TABLE_SIZE;
+    }
+
+public:
+    // Insert key-value pair
+    int nextID( ) {
+       return CURRENTID + 1;
+    }
+
+    void insert(int key, float value) {
+
+        int index = hashFunction(key);
+
+        // Check if key already exists, update value if found
+        for (auto &kv : table[index]) {
+            if (kv.first  == key) { 
+                if (kv.second.size() >0) {
+                    kv.second.push_back( value);
+                    cout << "Updated key " << key << " with new value.\n";
+                    return;
+                }
+            } 
+        }
+
+        PairType p;
+        p.first = key;
+        //p.second.resize(1000, 0.0f); // Fill with 0.5
+        p.second.push_back( value);
+        table[index].push_back(p); 
+        cout << "Inserted (" << key << ", " << value << ") into hash table.\n";
+    }
+
+
+    // Remove a key-value pair
+    void remove(int key) {
+        int index = hashFunction(key);
+        for (auto it = table[index].begin(); it != table[index].end(); ++it) {
+            if (it->first == key) {
+                table[index].erase(it);
+                cout << "Removed key " << key << " from hash table.\n";
+                return;
+            }
+        }
+        cout << "Key " << key << " not found.\n";
+    }
+
+    // Search for a value by key
+    float exists(float key) const {
+        int index = hashFunction(key);
+        for (const auto &kv : table[index]) {
+           // if (kv.second == key) {
+                return kv.first;
+        //    }
+        }
+        throw runtime_error("Key not found.");
+    }
+
+    // Search for a value by key
+    vector<float> retrieve(int key) const {
+        int index = hashFunction(key);
+        for (const auto &kv : table[index]) {
+            if (kv.first == key) {
+                return kv.second;
+            }
+        }
+        throw runtime_error("Key not found.");
+    } 
+
+};
+
+class HashTableSigStr{
+
+private:
+    static const int TABLE_SIZE = 10; // Fixed size for simplicity
+    static const int VECT_SIZE  = 1000; // Fixed size for simplicity
+    int CURRENTID = -1;
+
+    using PairType = std::pair<int, std::vector<string>>;
+    std::list<PairType> table[TABLE_SIZE];
+
+ 
+   // list<pair<int, vector<float> >> table[TABLE_SIZE]; // Array of lists for chaining 
+
+    // Simple hash function
+    int hashFunction(int key) const {
+        return key % TABLE_SIZE;
+    }
+
+public:
+    // Insert key-value pair
+    int nextID( ) {
+       return CURRENTID + 1;
+    }
+
+    void insert(int key, string value) {
+
+        int index = hashFunction(key);
+
+        // Check if key already exists, update value if found
+        for (auto &kv : table[index]) {
+            if (kv.first  == key) { 
+                if (kv.second.size() >0) {
+                    kv.second.push_back( value);
+                    cout << "Updated key " << key << " with new value.\n";
+                    return;
+                }
+            } 
+        }
+
+        PairType p;
+        p.first = key;
+        //p.second.resize(1000, 0.0f); // Fill with 0.5
+        p.second.push_back( value);
+        table[index].push_back(p); 
+        cout << "Inserted (" << key << ", " << value << ") into hash table.\n";
+    }
+
+
+    // Remove a key-value pair
+    void remove(int key) {
+        int index = hashFunction(key);
+        for (auto it = table[index].begin(); it != table[index].end(); ++it) {
+            if (it->first == key) {
+                table[index].erase(it);
+                cout << "Removed key " << key << " from hash table.\n";
+                return;
+            }
+        }
+        cout << "Key " << key << " not found.\n";
+    }
+
+    // Search for a value by key
+    float exists(float key) const {
+        int index = hashFunction(key);
+        for (const auto &kv : table[index]) {
+           // if (kv.second == key) {
+                return kv.first;
+        //    }
+        }
+        throw runtime_error("Key not found.");
+    }
+
+    // Search for a value by key
+    vector<string> retrieve(int key) const {
+        int index = hashFunction(key);
+        for (const auto &kv : table[index]) {
+            if (kv.first == key) {
+                return kv.second;
+            }
+        }
+        throw runtime_error("Key not found.");
+    } 
+
 };
 
 /* 
@@ -250,7 +530,7 @@ int maasasain() {
                     if (!(cin >> keyId)) {
                         throw invalid_argument("Key must be an integer.");
                     }
-                    cout << "Value: " << edges.search(keyId) << "\n";
+                    cout << "Value: " << edges.retrieve(keyId) << "\n";
                     break;
 
                 case 3:
@@ -270,15 +550,15 @@ int maasasain() {
                     cout << "Enter key to search: ";
                     cin >> key;
                     keyId = props.similar(key)  ; 
-                    cout << "Closest: " << props.search(keyId) << "\n";
+                    cout << "Closest: " << props.retrieve(keyId) << "\n";
                     break;
 
                 case 6:
                     cout << "Enter key to search: ";
                     cin >> key;
                     keyId = props.similar(key)  ;
-                    valueID = edges.search(keyId) ;
-                    cout << "Resp: " << props.search(valueID) << "\n";
+                    valueID = edges.retrieve(keyId) ;
+                    cout << "Resp: " << props.retrieve(valueID) << "\n";
 
                     break;
 

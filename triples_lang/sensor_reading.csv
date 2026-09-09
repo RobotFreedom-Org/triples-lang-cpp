@@ -1,0 +1,11 @@
+Distance,Noise,Movement,Touch,Label
+Close,Loud,High,Yes,No
+Close,Loud,High,No,No
+Midrange,Loud,High,Yes,Yes
+Far,Typical,High,Yes,Yes
+Far,None,Typical,Yes,Yes
+Far,None,Typical,No,No
+Midrange,None,Typical,No,Yes
+Close,Typical,High,Yes,No
+Close,None,Typical,Yes,Yes
+Far,Typical,Typical,Yes,Yes
