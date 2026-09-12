@@ -284,10 +284,8 @@ char clearMemory( ) {
 struct triplesspace::SVO runIfBlock(int blockId) {
 
   struct triplesspace::SVO output;
-  //strcpy(output.s, ""); 
- // strcpy(output.v, ""); 
-  strcpy(output.o, " ");  
-
+  //strcpy(output.s, "");  
+ // strcpy(output.v, "");   
   int _max = MAX_CMDS - 1;
   int run = 1; 
 
@@ -300,16 +298,15 @@ struct triplesspace::SVO runIfBlock(int blockId) {
           char*  o =  BLOCKS[blockId][i].o ;   
    
           struct triplesspace::SVO condition = core(v,s,o); 
-  
-          if (strcmp(  condition.o, "0")  == 0) { 
+          
+          if (condition.sigs.front() == 0) { 
             run = 0;   
           }
         } else { 
           char*  v = BLOCKS[blockId][i].v ;  
           char*  s = BLOCKS[blockId][i].s;  
           char*  o = BLOCKS[blockId][i].o;      
-          struct triplesspace::SVO  _output = core(v,s,o);   
-          strcpy(output.o, _output.o);   
+          output = core(v,s,o);    
         } 
     }
   }
@@ -320,8 +317,7 @@ struct triplesspace::SVO runIfBlock(int blockId) {
 struct triplesspace::SVO execute( char* o) {
   struct triplesspace::SVO output;
   //strcpy(output.s, ""); 
- // strcpy(output.v, ""); 
-  strcpy(output.o, " ");  
+ // strcpy(output.v, "");  
 
   int _max = MAX_CMDS - 1;
   int run = 1;
@@ -333,8 +329,7 @@ struct triplesspace::SVO execute( char* o) {
           char*  v =  ROUTINES[routine_id][i].v; 
           char*  s =  ROUTINES[routine_id][i].s;   
           char*  o =  ROUTINES[routine_id][i].o ;     
-          struct triplesspace::SVO  _output = core(v , s, o);     
-          strcpy(output.o, _output.o);  
+           output = core(v , s, o);      
       }
     }  
   return output;
@@ -344,12 +339,7 @@ struct triplesspace::SVO execute( char* o) {
 struct triplesspace::SVO dispatcher(char *v, char *s, char *o) {
  
   struct triplesspace::SVO output; 
- 
-  strcpy(output.s, ""); 
-  strcpy(output.v, ""); 
-
-  strcpy(output.o, "");  
-
+    
 
   if (current_blocks != -1) {
  
@@ -469,10 +459,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
  
   struct triplesspace::SVO output;
  
-
-  strcpy(output.s, ""); 
-  strcpy(output.v, ""); 
-  strcpy(output.o, "");  
+ 
 
   if (strcmp(v, "help")   == 0  ) {  
       // Serial.println("set,get,echo,add,subtract,divide,multiple,increment,decrement,more,less,equal,different,flow,routine,help");
@@ -481,7 +468,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
       
   }
   else if ( strcmp(v, "echo")   == 0) { 
-      strcpy(output.o, s);  
+      output.recs.push_back(s);   
 
   } else if (strcmp(v, "flow")   == 0  ) {
     if ( strcmp(s, "if")   == 0  ) { 
@@ -513,31 +500,29 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     }
   } else if (strcmp(v, "set")   == 0 ){ 
    
-    char t =  setMemory(s,  o); 
-    strcpy(output.o, " "); 
+    char t =  setMemory(s,  o);  
  
   } else if (strcmp(v, "get")  ==0){
  
  
     char* _t = getMemory(s);    
     char res[MAX_MEM-1];
-    strcpy(res, _t); 
-    strcpy(output.o, res); 
+    strcpy(res, _t);  
+    output.recs.push_back(res); 
 
   } else if (strcmp(v, "put")   == 0 ){ 
   
     float fo =  atof(o);  
-    float t =  setFltMemory(s,  fo); 
-    strcpy(output.o, " "); 
+    float t =  setFltMemory(s,  fo);
  
   } else if (strcmp(v, "pull")  ==0){
    
-    float f1 =  getFltMemory(s);    
-    snprintf(output.o, sizeof(output.o), "%f", f1);  
+    float val =  getFltMemory(s);    
+    output.sigs.push_back(val); 
 
   } else if (strcmp(v, "clear")  ==0){
-    clearMemory(); 
-    strcpy(output.o, "1");
+    clearMemory();  
+    output.sigs.push_back(1); 
     
  
   }   else if ( strcmp(v, "upper")   == 0) { 
@@ -547,7 +532,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
       for (int i = 0; i <= _max; i++) {     
          out[i] =  toupper(s[i]); 
       }
-      strcpy(output.o, out);  
+      output.recs.push_back(out);  
 
   }   else if ( strcmp(v, "lower")   == 0) { 
  
@@ -556,7 +541,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
       for (int i = 0; i <= _max; i++) {     
          out[i] =  tolower(s[i]); 
       }
-      strcpy(output.o, out);  
+      output.recs.push_back(out);  
 
   }   else if ( strcmp(v, "replace")   == 0) { 
 
@@ -570,17 +555,21 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
        char to[6];  
        strcpy(to, _to);
 
-      // replace_char(v1, f, to); 
-       strcpy(output.o, s);  
+       //replace_char(v1, frm, to); 
+       output.recs.push_back(v1);  
 
   }  else if (strcmp(v, "split")  ==0){ 
 
        char* v1   =  getMemory(s); 
-       char* fin  = std::strtok(v1  , o);  
-      // s = std::strtok(NULL, " ");  
-      // o = std::strtok(NULL, " ");     
-       strcpy(output.o, fin);  
-     
+       char* fin  = std::strtok(v1  , o); 
+
+       output.recs.push_back(fin);  
+       fin = std::strtok(NULL, " ");
+       while (fin != NULL)
+       { 
+           output.recs.push_back(fin);  
+           fin = std::strtok(NULL, " ");
+       }  
 
   }   else if ( strcmp(v, "join")   == 0) { 
        char* v1 =  getMemory(s);
@@ -599,12 +588,12 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
          out[i+_max1] =  o[i]; 
        }
 
-       strcpy(output.o, out);  
+       output.recs.push_back(out);  
 
   }  else if ( strcmp(v, "element")   == 0) { 
        char* v1 =  getMemory(s); 
        char* fin = std::strtok(v1 , "|");  
-       strcpy(output.o, fin);  
+       output.recs.push_back(fin);    
 
   }  else if (strcmp(v, "add")  ==0){
   
@@ -613,7 +602,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     float f1 =  atof(v1);  
     float f2 =  atof(v2);  
     float value = f1 + f2;    
-    snprintf(output.o, sizeof(output.o), "%f", value);   
+    output.sigs.push_back(value);  
     // dtostrf(value, 4, 3, output.o);  
 
 
@@ -621,14 +610,14 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     char* v1 =  getMemory(s); 
     float f1 =  atof(v1);   
     float value = f1 + 1;
-    snprintf(output.o, sizeof(output.o), "%f", value);   
+    output.sigs.push_back(value);  
     // dtostrf(value, 4, 3, output.o);  
 
   } else if (strcmp(v, "decrement")  ==0)  {
     char* v1 =  getMemory(s); 
     float f1 =  atof(v1);   
     float value = f1 - 1; 
-    snprintf(output.o, sizeof(output.o), "%f", value);    
+    output.sigs.push_back(value);   
     // dtostrf(value, 4, 3, output.o);  
 
   } else if (strcmp(v, "subtract")  ==0)  {
@@ -637,7 +626,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     float f1 =  atof(v1);  
     float f2 =  atof(v2);  
     float value = f1 - f2;
-    snprintf(output.o, sizeof(output.o), "%f", value);   
+    output.sigs.push_back(value);  
     // dtostrf(value, 4, 3, output.o);  
 
   } else if (strcmp(v, "divide")  ==0)   {
@@ -646,7 +635,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     float f1 =  atof(v1);  
     float f2 =  atof(v2);   
     float value = f1 / f2;
-    snprintf(output.o, sizeof(output.o), "%f", value);     
+    output.sigs.push_back(value);    
     // dtostrf(value, 4, 3, output.o);  
 
   } else if  (strcmp(v, "multiply")  ==0)  {
@@ -655,7 +644,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     float f1 =  atof(v1);  
     float f2 =  atof(v2);   
     float value = f1 * f2;
-    snprintf(output.o, sizeof(output.o), "%f", value);   
+    output.sigs.push_back(value);  
     // dtostrf(value, 4, 3, output.o);  
 
   } else if (strcmp(v, "more")  ==0){
@@ -664,10 +653,10 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     float f1 =  atof(v1);  
     float f2 =  atof(v2);  
 
-    if (f1 > f2) {
-      strcpy(output.o, "1");
-    } else { 
-      strcpy(output.o, "0");
+    if (f1 > f2) { 
+      output.sigs.push_back(1);    
+    } else {     
+      output.sigs.push_back(0);    
     }
 
   } else if (strcmp(v, "less")  ==0)   {
@@ -677,9 +666,9 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     float f2 =  atof(v2);  
 
     if (f1 < f2) { 
-      strcpy(output.o, "1");
-    } else { 
-      strcpy(output.o, "0");
+      output.sigs.push_back(1);    
+    } else {     
+      output.sigs.push_back(0);    
     }
 
   } else if (strcmp(v, "equal")  ==0)  {
@@ -689,9 +678,9 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     float f2 =  atof(v2);  
 
     if (f1 == f2) {
-      strcpy(output.o, "1");
-    } else { 
-      strcpy(output.o, "0");
+      output.sigs.push_back(1);    
+    } else {     
+      output.sigs.push_back(0);    
     }
 
   } else if (strcmp(v, "different")  ==0)   {
@@ -701,9 +690,9 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     float f2 =  atof(v2);  
 
     if (f1 != f2) {
-      strcpy(output.o, "1");
-    } else { 
-      strcpy(output.o, "0");
+      output.sigs.push_back(1);    
+    } else {     
+      output.sigs.push_back(0);    
     }
 
    } else if (strcmp(v, "encoding")  ==0)     {
@@ -733,19 +722,36 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
    } else if (strcmp(v, "learn")  ==0)   {
 
 
-     if (strcmp(s, "save")  ==0)   {
+     if (strcmp(s, "display")  ==0)   {
  
         int trees = 0;
         string model = dectree_repr(LoadedDecTreeModel); 
-        ofstream outFile("tree.json"); 
-        
-        outFile << "{\n"; 
-        outFile << model; 
-        outFile << "}\n"; 
+        ofstream outFile("tree.txt"); 
+         
+        outFile << model;  
+        outFile.close();
+
+     } else if (strcmp(s, "save")  ==0)   {
+  
+        string FileName = o;
+      //  bool res = dectree_save(FileName, LoadedDecTreeModel);  
+
+        int trees = 0;
+        string model = dectree_repr(LoadedDecTreeModel); 
+        ofstream outFile("tree.txt"); 
+         
+        outFile << model;  
         outFile.close();
 
 
+
      } else if (strcmp(s, "load")  ==0)   {
+
+        string FileName = o;
+
+       // Node* LoadedDecTreeModel;
+        LoadedDecTreeModel= load_tree("tree.txt"); 
+        
 
      } else if (strcmp(s, "dectree")  ==0)   {
 
@@ -814,12 +820,9 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
      } else if (strcmp(s, "past")  == 0)   {
 
-     } else if (strcmp(s, "dectree")  == 0)   { 
+     } else if (strcmp(s, "dectree")  == 0)   {  
 
-
-         std::map<string, string> data;
- 
-         
+         std::map<string, string> data; 
          FILE *filePtr;
          cout << "file: " << o  << endl;
          filePtr = fopen(o, "r"); 
@@ -882,7 +885,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
           }
          
-      snprintf(output.o, sizeof(output.o), "%i",lcnt);   
+      output.sigs.push_back(lcnt);      
 
      }
 
@@ -939,28 +942,34 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
  
      } else if (strcmp(s, "exists")  == 0)   {
           std::string key =  o;  
-          int keyId =  archive_db.exists(key);  
-          snprintf(output.o, sizeof(output.o), "%i", keyId);   
+          int keyId =  archive_db.exists(key);   
+           output.sigs.push_back(keyId);      
 
      } else if (strcmp(s, "retrieve")  == 0)   { 
           int keyId =  atoi(o);   
-          std::string resp  = archive_db.retrieve(keyId);  
-          strcpy(output.o, resp.c_str());  
+          std::string resp  = archive_db.retrieve(keyId);   
+          char *out;
+          strcpy(out, resp.c_str());
+          output.recs.push_back( out);      
  
       } else if (strcmp(s, "definition")  == 0)   {   
           std::string key =  o;  
           int keyId =  archive_db.exists(key) ;   
           int respId = archive_edges.retrieve(keyId) ;  
-          std::string resp = archive_db.retrieve(respId);     
-          strcpy(output.o, resp.c_str());  
+          std::string resp = archive_db.retrieve(respId);   
+          char *out;
+          strcpy(out, resp.c_str());
+          output.recs.push_back( out);      
 
       } else if (strcmp(s, "similar")  == 0)   { 
  
           std::string key =  o;   
           int keyId =  archive_db.similar(key) ;    
           int respId = archive_edges.retrieve(keyId) ;   
-          std::string resp = archive_db.retrieve(respId);    
-          strcpy(output.o, resp.c_str());  
+          std::string resp = archive_db.retrieve(respId);  
+          char *out;
+          strcpy(out, resp.c_str());
+          output.recs.push_back( out);      
 
       }else if (strcmp(s, "linked")  == 0)   { 
           std::string key =  o;  
@@ -1000,12 +1009,11 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
             /*Increment line count*/   
             size_t len = strlen(currentline);
             if (len > 0 && currentline[len - 1] == '\n') {
-                      currentline[len - 1] = '\0';
+                currentline[len - 1] = '\0';
             }
            if (lcnt  ==0)
            {
-                buffer = strtok(currentline, delim);   
-
+                buffer = strtok(currentline, delim);    
                // cout << buffer  << endl;
 
                 keyId   = signals_db.nextID();   
@@ -1025,14 +1033,13 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
            }
            else
            {
-             cols = 0;
-             buffer = strtok(currentline, delim); 
-             colname = header[cols];    
-             keyId = signals_db.exists(colname)  ;  
-             signals_str_vect.insert(keyId, buffer );    
+              cols = 0;
+              buffer = strtok(currentline, delim); 
+              colname = header[cols];    
+              keyId = signals_db.exists(colname)  ;  
+              signals_str_vect.insert(keyId, buffer );    
 
-              buffer = strtok(NULL,delim);
-              cout << buffer  << endl;
+              buffer = strtok(NULL,delim); 
               while (buffer !=NULL)
                  {   
  
@@ -1047,8 +1054,8 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
            lcnt++;
 
           }
-         
-      snprintf(output.o, sizeof(output.o), "%i",lcnt);  
+          
+       output.sigs.push_back( keyId);    
      //  strcpy(output.o, "1");
 
  
@@ -1056,23 +1063,28 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
           keyId = signals_db.exists(o)  ;  
         //  string key  =  signals_flt_vect.exists(o);  
-        //   snprintf(output.o, sizeof(output.o), "%s", key.c_str());   
-          snprintf(output.o, sizeof(output.o), "%i", keyId);   
+        //   snprintf(output.o, sizeof(output.o), "%s", key.c_str());    
+          output.sigs.push_back( keyId);    
 
      } else if (strcmp(s, "last")  == 0)   {  
  
              keyId = signals_db.exists(o)  ;  
              vector<string> resp  = signals_str_vect.retrieve(keyId);  
-             string val =  resp.back();
-             snprintf(output.o, sizeof(output.o), "%s",val.c_str());   
+             string val =  resp.back(); 
+             char *out;
+             strcpy(out, val.c_str());
+             output.recs.push_back( out);   
 
      } else if (strcmp(s, "first")  == 0)    { 
           
 
              keyId = signals_db.exists(o)  ;  
              vector<string> resp  = signals_str_vect.retrieve(keyId);  
-             string val =  resp.back();
-             snprintf(output.o, sizeof(output.o), "%s", val.c_str());   
+             string val =  resp.back();  
+
+             char *out;
+             strcpy(out, val.c_str());
+             output.recs.push_back( out);      
              
 
      } else if (strcmp(s, "distance")  == 0)   { 
@@ -1082,8 +1094,8 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
     
      } else if (strcmp(s, "count")  == 0)   {  
           keyId = signals_db.exists(o)  ;  
-          vector<float> resp  = signals_flt_vect.retrieve(keyId);   
-          snprintf(output.o, sizeof(output.o), "%zu",resp.size());   
+          vector<float> resp  = signals_flt_vect.retrieve(keyId);    
+          output.sigs.push_back( resp.size());    
  
  
       } else if (strcmp(s, "fusison")  == 0)   {   
@@ -1180,57 +1192,34 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
           }
          
-      snprintf(output.o, sizeof(output.o), "%i",lcnt);  
+           
+      output.sigs.push_back(lcnt);       
      //  strcpy(output.o, "1");
 
  
      } else if (strcmp(s, "exists")  == 0)   {  
 
-          keyId = signals_db.exists(o)  ;  
-        //  string key  =  signals_flt_vect.exists(o);  
-        //   snprintf(output.o, sizeof(output.o), "%s", key.c_str());   
-          snprintf(output.o, sizeof(output.o), "%i", keyId);   
+          keyId = signals_db.exists(o)  ;     
+          output.sigs.push_back(keyId);    
 
-     } else if ((strcmp(s, "last")  == 0)  || (strcmp(s, "last->string")  == 0) )  {  
-
-          if (strcmp(s, "last->string")  == 0)
-          { 
+     } else if ((strcmp(s, "last")  == 0)   )  {  
  
              keyId = signals_db.exists(o)  ;  
-             vector<string> resp  = signals_str_vect.retrieve(keyId);  
-             string val =  resp.back();
-             snprintf(output.o, sizeof(output.o), "%s",val.c_str());  
-          } 
-          else 
-          {
-             keyId = signals_db.exists(o)  ;  
              vector<float> resp  = signals_flt_vect.retrieve(keyId);    
-             snprintf(output.o, sizeof(output.o), "%f", resp.back());   
-          }
+             output.sigs.push_back(resp.back());    
 
-     } else if ((strcmp(s, "first")  == 0)  || (strcmp(s, "first->string")  == 0) )  { 
+     } else if ((strcmp(s, "first")  == 0)    )  { 
          
-
-          if (strcmp(s, "first->string")  == 0)
-          { 
-
+ 
              keyId = signals_db.exists(o)  ;  
-             vector<string> resp  = signals_str_vect.retrieve(keyId);  
-             string val =  resp.back();
-             snprintf(output.o, sizeof(output.o), "%s", val.c_str());  
-          } 
-          else 
-          {
-             keyId = signals_db.exists(o)  ;  
-             vector<float> resp  = signals_flt_vect.retrieve(keyId);   
-             snprintf(output.o, sizeof(output.o), "%f", resp.front());   
-          }
+             vector<float> resp  = signals_flt_vect.retrieve(keyId);     
+             output.sigs.push_back(resp.front());     
           
      } else if (strcmp(s, "sum")  == 0)   {  
           keyId = signals_db.exists(o)  ;  
           vector<float> resp  = signals_flt_vect.retrieve(keyId);   
-          int sum = std::accumulate(resp.begin(), resp.end(), 0);
-          snprintf(output.o, sizeof(output.o), "%i", sum);   
+          int sum = std::accumulate(resp.begin(), resp.end(), 0); 
+          output.sigs.push_back(sum);     
  
      } else if (strcmp(s, "mean")  == 0)   {  
           keyId = signals_db.exists(o)  ;  
@@ -1238,20 +1227,20 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
           int sum = std::accumulate(resp.begin(), resp.end(), 0);
 
           float mean =  sum / resp.size();
-
-          snprintf(output.o, sizeof(output.o), "%f", mean);   
+          output.sigs.push_back(mean);     
+ 
  
      } else if (strcmp(s, "minimum")  == 0)   {  
           keyId = signals_db.exists(o)  ;  
           vector<float> resp  = signals_flt_vect.retrieve(keyId);  
           auto it = std::min_element(resp.begin(), resp.end()); 
-          snprintf(output.o, sizeof(output.o), "%f", *it);   
+          output.sigs.push_back(*it);      
 
      } else if (strcmp(s, "maximum")  == 0)   {  
           keyId = signals_db.exists(o)  ;  
           vector<float> resp  = signals_flt_vect.retrieve(keyId);   
-          auto it = std::max_element(resp.begin(), resp.end());  
-          snprintf(output.o, sizeof(output.o), "%f", *it);   
+          auto it = std::max_element(resp.begin(), resp.end());   
+          output.sigs.push_back(*it);      
 
      } else if (strcmp(s, "distance")  == 0)   { 
           int keyId =  atoi(o);   
@@ -1261,13 +1250,13 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
      } else if (strcmp(s, "varience")  == 0)   {  
           keyId = signals_db.exists(o)  ;  
-          vector<float> resp  = signals_flt_vect.retrieve(keyId);   
-          snprintf(output.o, sizeof(output.o), "%f", resp.back());   
+          vector<float> resp  = signals_flt_vect.retrieve(keyId);    
+          output.sigs.push_back(resp.back());      
 
      } else if (strcmp(s, "count")  == 0)   {  
           keyId = signals_db.exists(o)  ;  
-          vector<float> resp  = signals_flt_vect.retrieve(keyId);   
-          snprintf(output.o, sizeof(output.o), "%zu",resp.size());   
+          vector<float> resp  = signals_flt_vect.retrieve(keyId);    
+          output.sigs.push_back(resp.size());      
  
  
       } else if (strcmp(s, "fusison")  == 0)   {   
@@ -1327,8 +1316,8 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
  
            std::string in_o  = o;   
            int _s_id;  
-           _s_id = svo_db.exists(in_o);
-           snprintf(output.o, sizeof(output.o), "%i", _s_id);   
+           _s_id = svo_db.exists(in_o);  
+          output.sigs.push_back(_s_id);      
 
 
       } else if (strcmp(s, "link")  ==0)   {
@@ -1338,8 +1327,8 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
            int i_to    =  atoi(_to);  
            int i_from  =  atoi(_from);  
            svo_links.insert(i_to, i_from);
-           svo_links.insert(i_from, i_to);
-           strcpy(output.o, "1");
+           svo_links.insert(i_from, i_to); 
+           output.sigs.push_back(1);      
 
  
       } else if (strcmp(s, "similar")  == 0)   { 
@@ -1399,9 +1388,23 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
                int _o_id = _o_ids.front(); 
                string o = svo_db.retrieve(_o_id);
  
+               char *out_s =  _s; //.c_str();
+               output.recs.push_back(out_s);   
+
+               char *out_v ;
+
+               strcpy(out_v, v.c_str());
+               output.recs.push_back(out_v); 
+
+               char *out_o  ;
+               strcpy(out_o, o.c_str());
+               output.recs.push_back(out_o);  
+ /*
+ 
                strcpy(output.s, in_s.c_str());
                strcpy(output.v, v.c_str());
                strcpy(output.o, o.c_str());   
+ */
               }
           
       } else if (strcmp(s, "related")  == 0)   { 
@@ -1458,11 +1461,16 @@ signals last 1;
 knowledge add me|love|cat;
 knowledge exists me|love|cat;
 knowledge closest me|love|dog;
-
+ extern "C" {
+    Geek* Geek_new(){ return new Geek(); }
+    void Geek_myFunction(Geek* geek){ geek -> myFunction(); }
+}
 
 
 */
-
+extern "C" { 
+    void dispatch(char *v, char *s, char *o){  dispatcher(v,s,o); }
+} 
 int main(int argc, char* argv[]) {
     
  
@@ -1536,11 +1544,27 @@ int main(int argc, char* argv[]) {
                 o = new char[cmd.length() + 1];
              }
                
-     
+             struct triplesspace::SVO results;
 
-             struct triplesspace::SVO results =dispatcher(v,s,o); 
+             try {
+                  results =dispatcher(v,s,o); 
+             }
+             catch(const std::exception& e)
+             {  
+                  std::cout << "Error occured " << e.what() << std::endl;
+             }
+               
+
              // std::cout << results.o;
-             std::cout <<  results.s << "|" << results.v << "|" << results.o << std::endl;
+             for (auto i: results.sigs) {
+              	std::cout << i << " ";
+             }
+
+             for (auto i: results.recs) {
+              	std::cout << i << " ";
+             }
+
+             std::cout << std::endl;
         }
     }
 

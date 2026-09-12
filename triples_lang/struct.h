@@ -4,15 +4,16 @@
 namespace triplesspace {
 
 struct SVO { 
+  std::vector<float> sigs; 
+  std::vector<char*> recs;   
+}; 
+ 
+  
+
+struct cmdsSVO { 
   char s[12];  
   char v[12];  
   char o[12];  
-}; 
-
-struct cmdsSVO { 
-  char s[8];  
-  char v[8];  
-  char o[8];  
 }; 
 
 struct iSVO { 
@@ -28,4 +29,6 @@ struct fSVO {
   float o;  
 }; 
 }
+
+
 struct triplesspace::SVO core(char *v , char *s , char *o ) ;

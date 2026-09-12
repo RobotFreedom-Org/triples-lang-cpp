@@ -4,8 +4,7 @@
 #include <stdexcept> 
 #include <vector> 
 #include <sstream> 
-#include <type_traits>
-
+#include <type_traits> 
 using namespace std;
  
 
@@ -48,7 +47,7 @@ public:
         for (auto &kv : table[index]) {
             if (kv.first == key) {
                 kv.second = value;
-                cout << "Updated key " << key << " with new value.\n";
+            //    cout << "Updated key " << key << " with new value.\n";
                 return;
             }
         }
@@ -148,7 +147,7 @@ public:
         for (auto &kv : table[index]) {
             if (kv.first == key) {
                 kv.second = value;
-                cout << "Updated key " << key << " with new value.\n";
+            //    cout << "Updated key " << key << " with new value.\n";
                 return;
             }
         }
@@ -227,7 +226,7 @@ public:
             if (kv.first  == key) { 
                 if (kv.second.size() >0) {
                     kv.second.push_back( value);
-                    cout << "Updated key " << key << " with new value.\n";
+              //      cout << "Updated key " << key << " with new value.\n";
                     return;
                 }
             } 
@@ -314,7 +313,7 @@ public:
             if (kv.first  == key) { 
                 if (kv.second.size() >0) {
                     kv.second.push_back( value);
-                    cout << "Updated key " << key << " with new value.\n";
+              //      cout << "Updated key " << key << " with new value.\n";
                     return;
                 }
             } 
@@ -399,7 +398,7 @@ public:
             if (kv.first  == key) { 
                 if (kv.second.size() >0) {
                     kv.second.push_back( value);
-                    cout << "Updated key " << key << " with new value.\n";
+               //     cout << "Updated key " << key << " with new value.\n";
                     return;
                 }
             } 
