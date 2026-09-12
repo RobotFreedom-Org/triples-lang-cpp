@@ -41,77 +41,201 @@ using namespace std;
 */
 struct Node {
 
-    bool isLeaf;
-
+    bool isLeaf;   
     string label;  
     string feature; 
     map<string, Node*> children; 
 
-    Node() : isLeaf(false) {}
+    int levelid ;    
+    Node* Parent;
+
+    Node() : isLeaf(false) {} 
 };
 
 
+void tokenize(char *line) {
+    char *cmd = strtok(line, "=");
+    while (cmd != NULL) {
+        printf("%s\n", cmd);
+        cmd = strtok(NULL, "=");
+    }
+}
 
 // Function to classify a new instance
-string dectree_repr(Node* tree , int inodeid = 0) {
+Node* load_tree(string FileName) {
+
+    Node* tree;
+
+    Node* node = new Node();
+    Node* parent = NULL;
+    string output;
+
+    char *buffer ;
+    FILE *filePtr;  
+  
+    char currentline[1000];  
+    int i = 0;
+    size_t len;
+    int level_id  = 0;
+
+
+    filePtr = fopen(FileName.c_str(), "r"); 
+    cout << "Loading Tree  " << endl;
+
+    while (fgets(currentline , 1000, filePtr))
+    {       
+       i ++; 
+ 
+       len = strlen(currentline); 
+       Node* node = new Node();
+
+       buffer = strtok(currentline, "=");      
+       buffer = strtok(NULL, "=");  
+       level_id = atoi(buffer);
+ 
+       if (parent == NULL) 
+       {
+          tree   = node;
+          parent = node;  
+ 
+          parent->levelid = 1;
+          node->levelid = 1;
+
+         // cout << "level id used " << endl;
+       }
+       else
+       { 
+
+        node->levelid = level_id; 
+ 
+        int par_ent = parent->levelid  +1;
+
+        while (level_id != par_ent)
+        {  
+           Node*  _parent  = parent->Parent  ;   
+           parent = _parent;
+           par_ent = parent->levelid +1 ;   
+        }  
+        node->Parent = parent; 
+       }  
+
+       fgets(currentline , 1000, filePtr); 
+       len = strlen(currentline); 
+       buffer = strtok(currentline, "=");      
+       buffer = strtok(NULL, "=");    
+       string feature = buffer;
+       feature.erase(std::remove(feature.begin(), feature.end(), '\n'), feature.end()); 
+       node->feature = feature; 
+
+       fgets(currentline , 1000, filePtr); 
+       len = strlen(currentline); 
+       buffer = strtok(currentline, "=");     
+       buffer = strtok(NULL, "=");    
+       string label = buffer;
+       label.erase(std::remove(label.begin(), label.end(), '\n'), label.end());
+       node->label = label;   
+
+       fgets(currentline , 1000, filePtr); 
+       len = strlen(currentline);  
+       buffer = strtok(currentline, "=");      
+       buffer = strtok(NULL, "=");  
+       string isleaf = buffer;  
+       isleaf.erase(std::remove(isleaf.begin(), isleaf.end(), '\n'), isleaf.end()); 
+ 
+       if (strcmp(isleaf.c_str(), "yes")  == 0) 
+       {
+           node->isLeaf = true;
+       }
+       else
+       {
+           node->isLeaf = false;
+       } 
+
+
+       fgets(currentline , 1000, filePtr); 
+       len = strlen(currentline); 
+       buffer = strtok(currentline, "=");      
+       buffer = strtok(NULL, "=");  
+       string split = buffer;  
+       split.erase(std::remove(split.begin(), split.end(), '\n'), split.end()); 
+
+       if   (split != "") 
+       { 
+           parent->children[split] = node;
+           if (node->isLeaf == false)
+           {
+            parent = node;
+           } 
+       }
+        
+    }
+ 
+ return tree;  
+}
+ 
+/* 
+  //  output.append("level_id="); 
+ //   output.append("feature=");  
+  //  output.append("value=");  
+  //  output.append("label="); 
+    output.append("is_leaf=");  
+
+    if (leaf )
+       {output.append("yes\n");}
+    else
+       {output.append("no\n");     
+        }     
+        
+
+    output.append("split=");  
+*/
+
+// Function to classify a new instance
+string dectree_repr(Node* tree , int inodeid = 0, string split="") {
 
     string output;  
     inodeid ++;
 
-    string sid = to_string(inodeid); 
-    output.append("\"node_");
-    output.append(sid);
-    output.append("\":{\n");
-    output.append("\"feature\":\"");
-    string feat  = tree->feature;
-    output.append(feat);
-    output.append("\",\n");
-    output.append("\"label\":\"");
-    string label  = tree->label;
+    string sid = to_string(inodeid);  
+    string feat;
+
+    output.append("level_id=");
+    output.append(to_string(inodeid)); 
+    output.append("\n"); 
+
+    output.append("feature=");
+    feat = tree->feature;  
+    output.append(feat); 
+    output.append("\n");
+   
+    output.append("label=");
+    string label  = tree->label; 
     output.append(label);
-    output.append("\",\n") ;
+    output.append("\n") ;
+    output.append("is_leaf="); 
+    bool leaf  = tree->isLeaf;
 
-    output.append("\"children\":{\n");  
+    if (leaf )
+       {output.append("yes\n");}
+    else
+       {output.append("no\n");     
+        }     
+        
 
-    for (auto &kv : tree->children) {
+    output.append("split="); 
+    output.append(split);
+    output.append("\n") ;
 
-       inodeid = inodeid + 10;
-       string children =  dectree_repr(kv.second, inodeid); 
-       output.append(children );  
+    for (auto &kv : tree->children) {  
+       string children =  dectree_repr(kv.second, inodeid, kv.first); 
+       output.append(children );   
      } 
-
-    output.append("}\n"); 
-    output.append("},\n");
+  
     return output;  
 }
 
+ 
 
-
-string dectree_repr(Node intree, int nodes=0)
-{
-
-    string final ; 
-    string children ;
-
-    final.append("Node\n");
-    final.append(intree.label);
-    final.append("\n");
-    final.append(intree.feature);
-    final.append("\n");  
-    final.append("children");
-    final.append("\n");  
-    for (auto &kv : intree.children) { 
-         final.append(kv.first);
-         final.append("\n");    
-         children = dectree_repr(*kv.second, nodes);    
-         }
-
-    final.append( children );
-    final.append("end children");
-    final.append("\n");  
-    final.append("End Node\n");
-    return final;
-}
 
 /*
  entropy
@@ -190,6 +314,7 @@ Node* buildTree(
     const vector<string>& labels,
     set<string> features
 ) {
+ 
     Node* node = new Node();
 
     // If all labels are the same, make a leaf
@@ -253,10 +378,7 @@ void releaseMem(Node* tree) {
     }
     delete tree;
 }
-
-int dectree_load() {
-return -1;
-}
+ 
 
 int dectree_save(Node*, string FileName) {
     
