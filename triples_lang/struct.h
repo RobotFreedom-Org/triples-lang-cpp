@@ -5,7 +5,7 @@ namespace triplesspace {
 
 struct SVO { 
   std::vector<float> sigs; 
-  std::vector<char*> recs;   
+  std::vector<std::string> recs;   
 }; 
  
   

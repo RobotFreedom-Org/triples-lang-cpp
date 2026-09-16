@@ -40,33 +40,31 @@
 #include "trpl_graph.cpp"  
 
 #include "io.c"    
-#include "ml/dec_tree.cpp"    
-
+#include "ml/dec_tree.cpp"  
+#include "ml/dec_tree_continuious.cpp"  
+#include "ml/nn.cpp"   
+#include "ml/gd.cpp"    
+ 
+#include "encoding/run_length_binary.cpp"     
+#include "encoding/binning.cpp"    
+ 
+#include "normalization/min_max.cpp"    
+ 
 using namespace std;
 
 int choice, keyId ,  valueID ;
 string key , value; 
-
-
-
-Node* LoadedDecTreeModel;
-  
-
-HashTableProp archive_db  ;
-HashTableEdge archive_edges  ;    
  
-HashTableProp    signals_db  ;
-HashTableSig     signals_flt_vect  ;
-HashTableSigStr  signals_str_vect  ; 
+Node* LoadedDecTreeModel;
+NeuralNetwork LoadedNeuralNetwork;
+DecisionTreeContinuous LoadedDecTreeContModel;
+Vector LoadedGradientDescent;
+  
+    
+Archives archive;
+Memory memory_sig_rec ;  
+Graph  svo_graph(100000)  ;     
 
-HashTableProp svo_db  ; 
-HashTableAdjacency svo_links  ;    
-HashTableAdjacency s_v  ;    
-HashTableAdjacency v_o  ;    
-HashTableAdjacency o_s  ;    
-HashTableAdjacency s_o  ;    
-HashTableAdjacency v_s  ;    
-HashTableAdjacency o_v  ; 
 /**/
 
   
@@ -116,6 +114,20 @@ void initBlock(int blockId) {
   //  BLOCKS[block][i].s[0] =  {0};
     //BLOCKS[block][i].o[0] =  {0};
   }
+}
+ 
+size_t countCharOccurrences(const char* str, char target) {
+    if (str == nullptr) {
+        return 0; // Null pointer safety
+    }
+
+    size_t count = 0;
+    for (size_t i = 0; str[i] != '\0'; ++i) {
+        if (str[i] == target) {
+            ++count;
+        }
+    }
+    return count;
 }
 
 void setup() {
@@ -697,7 +709,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
    } else if (strcmp(v, "encoding")  ==0)     {
 
-      if (strcmp(s, "bin")  ==0)   {
+     if (strcmp(s, "bin")  ==0)   {
       
      } else if (strcmp(s, "ohe")  == 0)   {
  
@@ -707,11 +719,27 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
      } else if (strcmp(s, "sound")  == 0)   {
 
-     }
-     
+     } else if (strcmp(s, "runlength")  == 0)   {
+  
+        vector<float>  vals =  memory_sig_rec.get_signals(o);
+        std::vector<double> doubleVec(vals.begin(), vals.end());
+        std::vector<std::pair<char, int>> res =  compressBinarySignal(doubleVec);
+       // output.sigs = res;
+
+     } 
+
    } else if (strcmp(v, "normalizing") ==0) {
 
-     if (strcmp(s, "extremes")  ==0)   {
+     if (strcmp(s, "minmax")  ==0)   { 
+ 
+        
+        vector<float>  vals = memory_sig_rec.get_signals(o) ;   
+        std::vector<double> doubleVec(vals.begin(), vals.end());
+        MinMaxEnc mdl =  minMaxFit(doubleVec); 
+
+        vector<double> res =  minMaxEncode(doubleVec, mdl);
+        std::vector<float> fltVec(res.begin(), res.end());
+        output.sigs = fltVec;
       
      } else if (strcmp(s, "euclidian")  == 0)   {
  
@@ -719,7 +747,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
      }
 
-   } else if (strcmp(v, "learn")  ==0)   {
+   } else if (strcmp(v, "learner")  ==0)   {
 
 
      if (strcmp(s, "display")  ==0)   {
@@ -732,32 +760,51 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
         outFile.close();
 
      } else if (strcmp(s, "save")  ==0)   {
-  
-        string FileName = o;
-      //  bool res = dectree_save(FileName, LoadedDecTreeModel);  
+   
+        
+        char* mldType = std::strtok(o  , "->");  
+        char* _file  = std::strtok(NULL,"->");  
+        string FileName = _file;
 
-        int trees = 0;
-        string model = dectree_repr(LoadedDecTreeModel); 
-        ofstream outFile("tree.txt"); 
-         
-        outFile << model;  
-        outFile.close();
+        if (strcmp(mldType, "tree")  ==0)   {   
 
+            string model = dectree_repr(LoadedDecTreeModel); 
+            ofstream outFile(FileName);  
+            outFile << model;  
+            outFile.close();
 
+        } else if (strcmp(mldType, "neuralnetwork")  ==0)   {  
+
+             LoadedNeuralNetwork.save(FileName);
+        } else if (strcmp(mldType, "dectree")  ==0)   {  
+
+             LoadedDecTreeContModel.save(FileName);  
+        }
 
      } else if (strcmp(s, "load")  ==0)   {
 
-        string FileName = o;
+        char* mldType = std::strtok(o  , "->");  
+        char* _file  = std::strtok(NULL,"->");  
+        string FileName = _file;
 
-       // Node* LoadedDecTreeModel;
-        LoadedDecTreeModel= load_tree("tree.txt"); 
-        
+        if (strcmp(mldType, "tree")  ==0)   {   
 
-     } else if (strcmp(s, "dectree")  ==0)   {
+           LoadedDecTreeModel = load_tree(FileName);
+
+        } else if (strcmp(mldType, "neuralnetwork")  ==0)   {  
+
+            LoadedNeuralNetwork.load(FileName);
+        }  else if (strcmp(mldType, "dectree")  ==0)   {  
+
+            LoadedDecTreeContModel.load(FileName);
+        }
+ 
+
+     } else if (strcmp(s, "tree")  ==0)   {
 
         char* _features = std::strtok(o  , "->");  
         char* _label    = std::strtok(NULL,"->");   
-
+  
 
         vector<map<string, string>> data;
         vector<string> labels;  
@@ -765,10 +812,9 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
         std::map<string, string> vecMap;
         
         char *buffer ;
-        buffer = strtok(_features, "|");    
-        int keyId = signals_db.exists(buffer)  ; 
+        buffer = strtok(_features, "|");      
 
-        vector<string>  vals = signals_str_vect.retrieve(keyId) ;  
+        vector<string>  vals =  memory_sig_rec.get_records(buffer) ;   
         for (auto& val:vals) {
             vecMap[buffer] = val;
             data.emplace_back(vecMap); 
@@ -776,41 +822,137 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
  
         features.insert(buffer) ;  
         buffer = strtok(NULL,"|");
+ 
+        //stack<vector<int>> myStack; // stack of vectors
+        int i_rec = -1;
+        while (buffer !=NULL)
+            {     
+             vals = memory_sig_rec.get_records(buffer); 
+             i_rec = 0;
+             for (auto& val:vals) { 
+                data[i_rec].insert({buffer, val});
+                i_rec++;
+  
+                 }
+  
+             // cout << "feat add: " << buffer  << endl;
+             features.insert(buffer) ;  
+             buffer = strtok(NULL,"|");
+           
+             }
+ 
+  
+        labels = memory_sig_rec.get_records(_label) ;    
+        //cout << "labels: " << labels.front()  << endl;
+
+        LoadedDecTreeModel = dectree_fit(data, labels, features);  
+
+     } else if (strcmp(s, "neuralnetwork")  ==0)   {
+
+        char* _features = std::strtok(o  , "->");  
+        char* _label    = std::strtok(NULL,"->");   
+ 
+        vector<vector<double>> features;
+        vector<vector<double>> labels;    
+        char *buffer ;
+        buffer = strtok(_features, "|");     
+
+        vector<float>  vals = memory_sig_rec.get_signals(buffer);    
+        std::vector<double> doubleVec(vals.begin(), vals.end());
+        features.push_back(doubleVec) ;  
+
+        buffer = strtok(NULL,"|");
 
         //stack<vector<int>> myStack; // stack of vectors
         int i_rec = -1;
         while (buffer !=NULL)
-           {    
-             keyId = signals_db.exists(buffer)  ;  
-             vals = signals_str_vect.retrieve(keyId) ; 
-             i_rec = 0;
-             for (auto& val:vals) {
-                vecMap[buffer] = val;
-               // data..insert(data.begin() + i_rec, vecMap);
-                data[i_rec].insert({buffer, val});
-                i_rec++;
-             }
+           {     
+             vals = memory_sig_rec.get_signals(buffer);  
+             doubleVec = std::vector<double>(vals.begin(), vals.end());
+             features.push_back(doubleVec) ;  
+             buffer = strtok(NULL,"|");
+           
+           }
+   
+        vector<float> sigs =   memory_sig_rec.get_signals(_label);   
+        std::vector<double> doubleVec2(sigs.begin(), sigs.end());
+        labels.push_back(doubleVec2) ;    
+        
+        NeuralNetwork nn(0.5);
+        for (int epoch = 0; epoch < 5000; epoch++) {
+            for (size_t i = 0; i < features.size(); i++) {
+               nn.train(features[i], labels[i]);
+          }
+        }
+       LoadedNeuralNetwork = nn;
+
+     } else if (strcmp(s, "gradientdecent")  ==0)   {
+
+        char* _features = std::strtok(o  , "->");  
+        char* _label    = std::strtok(NULL,"->");   
+     
+        char *buffer ;
+        buffer = strtok(_features, "|");     
+
+        vector<float>  vals =   memory_sig_rec.get_signals(buffer);     
+        std::vector<double> features(vals.begin(), vals.end()); 
   
-             features.insert(buffer) ;  
+ 
+        vector<float> sigs = memory_sig_rec.get_signals(_label);      
+        std::vector<double>  labels(sigs.begin(), sigs.end()); 
+         
+        double learningRate = 0.1;
+        int maxIters = 1000;
+        double tolerance = 1e-6;
+        //LoadedGradientDescent = nn;
+        Vector result = gradientDescent(features, labels, learningRate, maxIters, tolerance);
+
+     } else if (strcmp(s, "decisiontree")  == 0)   {
+     
+        char* _features = std::strtok(o  , "->");  
+        char* _label    = std::strtok(NULL,"->");    
+        std::vector<Sample> data;
+
+        char *buffer ;
+        buffer = strtok(_features, "|");     
+
+        Sample vecMap;
+        vector<float>  vals =  memory_sig_rec.get_signals(buffer);     
+        for (auto& val:vals) {  
+            vecMap.features.push_back(val);
+            data.emplace_back(vecMap); 
+         } 
+  
+        buffer = strtok(NULL,"|");
+ 
+        int i_rec = -1;
+        while (buffer !=NULL)
+           {     
+             vals =  memory_sig_rec.get_signals(buffer); 
+             i_rec = 0;
+             for (auto& val:vals) { 
+                data[i_rec].features.push_back(val); 
+                i_rec++;
+             } 
              buffer = strtok(NULL,"|");
            
            }
  
+   
+        vals =  memory_sig_rec.get_signals(_label); 
+        i_rec = 0;
+        for (auto& val:vals) { 
+                data[i_rec].label = val; 
+                i_rec++;
+          }   
+        LoadedDecTreeContModel.fit(data);   
+    
 
-        keyId = signals_db.exists(_label)  ;   
-        labels = signals_str_vect.retrieve(keyId)  ;    
-        LoadedDecTreeModel = dectree_fit(data, labels, features);  
-
-     } else if (strcmp(s, "decent")  == 0)   {
-
-
-     } else if (strcmp(s, "neural")  == 0)   {
-
- 
-     } else if (strcmp(s, "deep")  == 0)   {
-
-
-     }
+     } else if (strcmp(s, "simulatedanneal")  == 0)   {  
+     } else if (strcmp(s, "kmeans")  == 0)   {  
+     } else if (strcmp(s, "ltsm")  == 0)   {  
+     } else if (strcmp(s, "cnn")  == 0)   {  
+     } 
      
    } else if (strcmp(v, "reason")  ==0)   {
 
@@ -820,21 +962,46 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
      } else if (strcmp(s, "past")  == 0)   {
 
-     } else if (strcmp(s, "dectree")  == 0)   {  
+     } else if (strcmp(s, "tree")  == 0)   {   
 
-         std::map<string, string> data; 
+        int lcnt = 0;
+        char *buffer ;
+        string soutput;
+        size_t cnt = countCharOccurrences(o,'|');
+ 
+        std::map<string, string> data; 
+
+        if (cnt == 2)
+        {
+            buffer = strtok(o, "|");   
+            string _s = buffer  ;
+            buffer = strtok(NULL, "|");   
+            string _v = buffer  ;
+            buffer = strtok(NULL, "|");   
+            string _o = buffer  ; 
+ 
+            data.insert({"s",_s});  
+            data.insert({"v",_v});  
+            data.insert({"o",_o});  
+            string results = dectree_inference(LoadedDecTreeModel, data);    
+            char *out;
+            strcpy(out, results.c_str());
+            output.recs.push_back(out);   
+
+         
+         }
+         else
+         { 
          FILE *filePtr;
          cout << "file: " << o  << endl;
          filePtr = fopen(o, "r"); 
          char currentline[1000];
-         int lcnt = 0;
          const char *delim = "," ;
          char *buffer ;
 
          int cols = 0;
          string header[100];
          string colname ;
-         string soutput;
 
          while (fgets(currentline , 1000, filePtr))
           {      
@@ -845,24 +1012,28 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
             }
            if (lcnt  ==0)
            {
+              
                 buffer = strtok(currentline, delim);     
                 header[cols] = buffer; 
                 cols ++;
+ 
 
                 buffer = strtok(NULL, delim);
                 while (buffer !=NULL)
                  {      
+ 
                     header[cols] = buffer;   
                     cols ++;  
                     buffer = strtok(NULL,delim);
                  } 
            }
            else
-           {
+           { 
               cols = 0;
+
+              cout << cols << "loading data"<< endl;
               buffer = strtok(currentline, delim); 
-              colname = header[cols];     
-              keyId = signals_db.exists(colname)  ;   
+              colname = header[cols];      
               data.insert({colname,buffer});  
               buffer = strtok(NULL,delim);
               while (buffer !=NULL)
@@ -871,20 +1042,18 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
                     cols ++;
                     colname = header[cols];  
                     data.insert({colname,buffer});     
-                    buffer = strtok(NULL,delim); 
+                    buffer = strtok(NULL,delim);  
                  }  
 
-           }
-
-           string results = dectree_inference(LoadedDecTreeModel, data);  
-           soutput.append(results);
-           soutput.append("|");
-           cout << results  << endl;  
-           data.clear();
+           } 
            lcnt++;
 
-          }
-         
+          } 
+           string results = dectree_inference(LoadedDecTreeModel, data);  
+           output.recs.push_back(results);  
+          // data.clear();
+
+        }
       output.sigs.push_back(lcnt);      
 
      }
@@ -926,55 +1095,96 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
       /*update remove query access, define */
  
-      if (strcmp(s, "add")  ==0)   {
+      if (strcmp(s, "load")  ==0)   {
+ 
+          string key   =  o; //getMemory(o);  
+          vector<string> _key ; 
+          //todo add loop bqsed on split
+          _key.push_back(key); 
+          
+          int to = archive.add(_key);  
+          output.sigs.push_back(to);
+
+      } else if (strcmp(s, "add")  ==0)   {
+ 
+          string key   =  o; //getMemory(o);  
+          vector<string> _key ; 
+          //todo add loop bqsed on split
+          _key.push_back(key); 
+          
+          int to = archive.add(_key);  
+          output.sigs.push_back(to);
+
+      } else if  (strcmp(s, "duology")  ==0)   {
 
           char* _frm = std::strtok(o  , "->");  
           char* _to  = std::strtok(NULL,"->");  
-          char* key   =  getMemory(_frm);
-          char* value =  getMemory(_to);  
+          string key   = _frm ; // getMemory(_frm);
+          string  value = _to; // getMemory(_to);  
+  
+          vector<string> _key ;
+          vector<string>  _value ;
+          //todo add loop bqsed on split
+          _key.push_back(key);
+          _value.push_back(value);
+          
+          int to = archive.add(_key);
+          int frm = archive.add(_value);  
 
-          keyId   = archive_edges.nextID();
-          valueID = keyId + 1;
-          archive_edges.insert(keyId, valueID);
-          archive_edges.insert(valueID, keyId);
-          archive_db.insert(keyId, key);
-          archive_db.insert(valueID, value); 
+          archive.link(to, frm, "response"); 
  
      } else if (strcmp(s, "exists")  == 0)   {
           std::string key =  o;  
-          int keyId =  archive_db.exists(key);   
-           output.sigs.push_back(keyId);      
+          int keyId =  archive.exists(o);   
+          output.sigs.push_back(keyId);      
 
      } else if (strcmp(s, "retrieve")  == 0)   { 
-          int keyId =  atoi(o);   
-          std::string resp  = archive_db.retrieve(keyId);   
-          char *out;
-          strcpy(out, resp.c_str());
-          output.recs.push_back( out);      
  
-      } else if (strcmp(s, "definition")  == 0)   {   
-          std::string key =  o;  
-          int keyId =  archive_db.exists(key) ;   
-          int respId = archive_edges.retrieve(keyId) ;  
-          std::string resp = archive_db.retrieve(respId);   
-          char *out;
-          strcpy(out, resp.c_str());
-          output.recs.push_back( out);      
+          int keyid =  atoi(o);     
+          vector<std::string> resp  = archive.retrieve(keyid);  
+            
+          output.recs.reserve(resp.size());  
+          for (auto& s : resp) { 
+              output.recs.push_back(const_cast<char*>(s.c_str()));
+          }   
+ 
+      } else if (strcmp(s, "response")  == 0)   {    //defition
 
-      } else if (strcmp(s, "similar")  == 0)   { 
+          vector<string> _mess ; 
+          string _o = o;
+          _mess.push_back(_o); 
+
+          vector<string> resp = archive.definition(_mess) ;    
+          output.recs.reserve(resp.size());  
+          for (auto& s : resp) { 
+              output.recs.push_back(const_cast<char*>(s.c_str()));
+          }    
+      } else if (strcmp(s, "match")  == 0)   { 
+  
+          vector<string> _mess ; 
+          string _o = o;
+          _mess.push_back(_o); 
+          vector<string> resp = archive.match(_mess) ;      
+
+          string _t;
+          for (const auto &s : resp) {    
+             char out[s.size() +1];   
+
+             for (size_t i = 0; i < s.length(); ++i) {
+                   out[i] = s[i];
+              }
+             out[s.size()] = '\0';
+             output.recs.push_back(out);  
+           }   
  
-          std::string key =  o;   
-          int keyId =  archive_db.similar(key) ;    
-          int respId = archive_edges.retrieve(keyId) ;   
-          std::string resp = archive_db.retrieve(respId);  
-          char *out;
-          strcpy(out, resp.c_str());
-          output.recs.push_back( out);      
 
       }else if (strcmp(s, "linked")  == 0)   { 
-          std::string key =  o;  
-          int keyId =  archive_db.similar(key) ;  
-          int respId = archive_edges.retrieve(keyId) ;  
+          int keyid =  atoi(o);    
+          vector<int> resp  = archive.linked(keyId) ;  
+
+          for (auto& s : resp) { 
+              output.sigs.push_back(float(s));
+          }    
       }
  
     } else if (strcmp(v, "records")  == 0)   {
@@ -983,11 +1193,8 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
       if (strcmp(s, "add")  ==0)   {
 
           char* _frm = std::strtok(o  , "->");  
-          char* _to  = std::strtok(NULL,"->");    
- 
-          keyId   = signals_db.nextID();   
-          signals_db.insert(keyId,  _frm )  ;
-          signals_str_vect.insert(keyId, _to );    
+          char* _to  = std::strtok(NULL,"->");     
+          memory_sig_rec.add_records(_frm, _to );    
        
 
       } else if (strcmp(s, "load")  == 0)  { 
@@ -1013,20 +1220,14 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
             }
            if (lcnt  ==0)
            {
-                buffer = strtok(currentline, delim);    
-               // cout << buffer  << endl;
-
-                keyId   = signals_db.nextID();   
-                signals_db.insert(keyId,  buffer )  ;
+                buffer = strtok(currentline, delim);       
                 header[cols] = buffer; 
                 cols ++;
 
                 buffer = strtok(NULL, delim);
                 while (buffer !=NULL)
                  {      
-                    header[cols] = buffer;    
-                    keyId   = signals_db.nextID();   
-                    signals_db.insert(keyId,  buffer )  ;
+                    header[cols] = buffer;     
                     cols ++;  
                     buffer = strtok(NULL,delim);
                  } 
@@ -1035,19 +1236,19 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
            {
               cols = 0;
               buffer = strtok(currentline, delim); 
-              colname = header[cols];    
-              keyId = signals_db.exists(colname)  ;  
-              signals_str_vect.insert(keyId, buffer );    
+              colname = header[cols];      
+              memory_sig_rec.add_records( colname , buffer)  ;   
 
-              buffer = strtok(NULL,delim); 
+           //    cout << colname  << buffer << endl;
+
+              buffer = strtok(NULL, delim); 
               while (buffer !=NULL)
                  {   
  
                     cols ++;
                     colname = header[cols];
-                    keyId = signals_db.exists(colname)  ;  
-                    signals_str_vect.insert(keyId, buffer );      
-                    buffer = strtok(NULL,delim); 
+                    memory_sig_rec.add_records( colname , buffer)  ; 
+                    buffer = strtok(NULL, delim); 
                  }  
 
            }
@@ -1055,21 +1256,19 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
           }
           
-       output.sigs.push_back( keyId);    
+      // cout << "file: " << memory_sig_rec.get_records(colname).front()  << endl;
+       output.sigs.push_back( cols);    
      //  strcpy(output.o, "1");
 
  
      } else if (strcmp(s, "exists")  == 0)   {  
 
-          keyId = signals_db.exists(o)  ;  
-        //  string key  =  signals_flt_vect.exists(o);  
-        //   snprintf(output.o, sizeof(output.o), "%s", key.c_str());    
+          keyId = memory_sig_rec.exists( o );      
           output.sigs.push_back( keyId);    
 
      } else if (strcmp(s, "last")  == 0)   {  
- 
-             keyId = signals_db.exists(o)  ;  
-             vector<string> resp  = signals_str_vect.retrieve(keyId);  
+  
+             vector<string> resp  =  memory_sig_rec.get_records( o );  
              string val =  resp.back(); 
              char *out;
              strcpy(out, val.c_str());
@@ -1077,9 +1276,8 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
      } else if (strcmp(s, "first")  == 0)    { 
           
-
-             keyId = signals_db.exists(o)  ;  
-             vector<string> resp  = signals_str_vect.retrieve(keyId);  
+ 
+             vector<string> resp  = memory_sig_rec.get_records( o );  
              string val =  resp.back();  
 
              char *out;
@@ -1092,9 +1290,8 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
           // int index = std::distance(v.begin(), it) 
           // snprintf(output.o, sizeof(output.o), "%f", resp.back());   
     
-     } else if (strcmp(s, "count")  == 0)   {  
-          keyId = signals_db.exists(o)  ;  
-          vector<float> resp  = signals_flt_vect.retrieve(keyId);    
+     } else if (strcmp(s, "count")  == 0)   {   
+          vector<string> resp  = memory_sig_rec.get_records( o );  
           output.sigs.push_back( resp.size());    
  
  
@@ -1116,11 +1313,9 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
       if (strcmp(s, "add")  ==0)    {
 
           char* _frm = std::strtok(o  , "->");  
-          char* _to  = std::strtok(NULL,"->");    
- 
-          keyId   = signals_db.nextID();   
-          signals_db.insert(keyId,  _frm )  ;
-           float fvalue =  atof(_to);    
+          char* _to  = std::strtok(NULL,"->");     
+          float fvalue =  atof(_to);    
+          memory_sig_rec.add_signals( _frm , fvalue)  ;
 
       } else if (strcmp(s, "load")  == 0)   { 
 
@@ -1145,22 +1340,13 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
             }
            if (lcnt  ==0)
            {
-                buffer = strtok(currentline, delim);   
-
-               // cout << buffer  << endl;
-
-                keyId   = signals_db.nextID();   
-                signals_db.insert(keyId,  buffer )  ;
+                buffer = strtok(currentline, delim);     
                 header[cols] = buffer; 
-                cols ++;
-
+                cols ++; 
                 buffer = strtok(NULL, delim);
                 while (buffer !=NULL)
                  {      
-                    header[cols] = buffer;  
-
-                    keyId   = signals_db.nextID();   
-                    signals_db.insert(keyId,  buffer )  ;
+                    header[cols] = buffer;   
                     cols ++;  
                     buffer = strtok(NULL,delim);
                  } 
@@ -1170,9 +1356,8 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
              cols = 0;
              buffer = strtok(currentline, delim); 
              colname = header[cols];    
-             float fvalue =  atof(buffer);   
-             keyId = signals_db.exists(colname)  ;  
-             signals_flt_vect.insert(keyId, fvalue );   
+             float fvalue =  atof(buffer);    
+             memory_sig_rec.add_signals( colname , fvalue)  ; 
 
               buffer = strtok(NULL,delim);
               cout << buffer  << endl;
@@ -1182,8 +1367,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
                     cols ++;
                     colname = header[cols]; 
                     float fvalue =  atof(buffer);   
-                    keyId = signals_db.exists(colname)  ;  
-                    signals_flt_vect.insert(keyId, fvalue );   
+                    memory_sig_rec.add_signals( colname , fvalue)  ;  
                     buffer = strtok(NULL,delim); 
                  }  
 
@@ -1199,46 +1383,38 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
  
      } else if (strcmp(s, "exists")  == 0)   {  
 
-          keyId = signals_db.exists(o)  ;     
+          keyId = memory_sig_rec.exists(o)  ;     
           output.sigs.push_back(keyId);    
 
      } else if ((strcmp(s, "last")  == 0)   )  {  
- 
-             keyId = signals_db.exists(o)  ;  
-             vector<float> resp  = signals_flt_vect.retrieve(keyId);    
+  
+             vector<float> resp  =  memory_sig_rec.get_signals(o);  
              output.sigs.push_back(resp.back());    
 
-     } else if ((strcmp(s, "first")  == 0)    )  { 
-         
- 
-             keyId = signals_db.exists(o)  ;  
-             vector<float> resp  = signals_flt_vect.retrieve(keyId);     
+     } else if ((strcmp(s, "first")  == 0)    )  {  
+             vector<float> resp  = memory_sig_rec.get_signals(o);    
              output.sigs.push_back(resp.front());     
           
-     } else if (strcmp(s, "sum")  == 0)   {  
-          keyId = signals_db.exists(o)  ;  
-          vector<float> resp  = signals_flt_vect.retrieve(keyId);   
+     } else if (strcmp(s, "sum")  == 0)   {   
+          vector<float> resp  =  memory_sig_rec.get_signals(o);  
           int sum = std::accumulate(resp.begin(), resp.end(), 0); 
           output.sigs.push_back(sum);     
  
-     } else if (strcmp(s, "mean")  == 0)   {  
-          keyId = signals_db.exists(o)  ;  
-          vector<float> resp  = signals_flt_vect.retrieve(keyId);    
+     } else if (strcmp(s, "mean")  == 0)   {   
+          vector<float> resp  =  memory_sig_rec.get_signals(o);   
           int sum = std::accumulate(resp.begin(), resp.end(), 0);
 
           float mean =  sum / resp.size();
           output.sigs.push_back(mean);     
  
  
-     } else if (strcmp(s, "minimum")  == 0)   {  
-          keyId = signals_db.exists(o)  ;  
-          vector<float> resp  = signals_flt_vect.retrieve(keyId);  
+     } else if (strcmp(s, "minimum")  == 0)   {   
+          vector<float> resp  = memory_sig_rec.get_signals(o);   
           auto it = std::min_element(resp.begin(), resp.end()); 
           output.sigs.push_back(*it);      
 
-     } else if (strcmp(s, "maximum")  == 0)   {  
-          keyId = signals_db.exists(o)  ;  
-          vector<float> resp  = signals_flt_vect.retrieve(keyId);   
+     } else if (strcmp(s, "maximum")  == 0)   {   
+          vector<float> resp  = memory_sig_rec.get_signals(o);     
           auto it = std::max_element(resp.begin(), resp.end());   
           output.sigs.push_back(*it);      
 
@@ -1248,14 +1424,12 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
           // snprintf(output.o, sizeof(output.o), "%f", resp.back());   
   
 
-     } else if (strcmp(s, "varience")  == 0)   {  
-          keyId = signals_db.exists(o)  ;  
-          vector<float> resp  = signals_flt_vect.retrieve(keyId);    
+     } else if (strcmp(s, "varience")  == 0)   {   
+          vector<float> resp  = memory_sig_rec.get_signals(o);   
           output.sigs.push_back(resp.back());      
 
-     } else if (strcmp(s, "count")  == 0)   {  
-          keyId = signals_db.exists(o)  ;  
-          vector<float> resp  = signals_flt_vect.retrieve(keyId);    
+     } else if (strcmp(s, "count")  == 0)   {   
+          vector<float> resp  = memory_sig_rec.get_signals(o);    
           output.sigs.push_back(resp.size());      
  
  
@@ -1284,31 +1458,52 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
            char* _s  = std::strtok(o  , "|");  
            char* _v  = std::strtok(NULL,"|");  
-           char* _o  = std::strtok(NULL,"|");  
+           char* _o  = std::strtok(NULL,"|");   
+  
 
-           char* _output  = std::strtok(NULL,"->");  
+           string label = _s;
+           int _s_id  = svo_graph.addVertex(label, "subject") ; 
+ 
+           label = _v;
+           int _v_id  = svo_graph.addVertex(label, "verb") ;
+ 
+           label = _o;
+           int _o_id  = svo_graph.addVertex(label, "object") ;
+      
+           svo_graph.addEdge(_s_id, _v_id, 1, "s_v"); 
+           svo_graph.addEdge(_v_id, _o_id, 1, "v_o");      
+           svo_graph.addEdge(_o_id, _s_id, 1, "o_s");  
 
-           int _s_id;
-           int _v_id;
-           int _o_id;
-           int _link_id;
 
-           _s_id  = svo_db.nextID();
-           _v_id  = _s_id +1;
-           _o_id  = _v_id +1;
-           _link_id  = _o_id +1;
-    
-           svo_db.insert(_s_id, _s);   
-           svo_db.insert(_v_id, _v); 
-           svo_db.insert(_o_id, _o);    
-           svo_db.insert(_link_id, _svo);    
+      } else if  (strcmp(s, "duology")  ==0)   {
 
-           s_v.insert(_s_id, _v_id); 
-           v_o.insert(_v_id, _o_id);      
-           o_s.insert(_o_id, _s_id);      
-           s_o.insert(_s_id, _o_id);     
-           v_s.insert(_v_id, _s_id);    
-           o_v.insert(_o_id, _v_id);   
+
+           char* part1  = std::strtok(o  , "->");  
+           char* part2  = std::strtok(NULL,"->"); 
+
+           char* _s1  = std::strtok(part1  , "|");  
+           char* _v1  = std::strtok(NULL,"|");  
+           char* _o1  = std::strtok(NULL,"|");   
+
+           char* _s2  = std::strtok(part2  , "|");  
+           char* _v2  = std::strtok(NULL,"|");  
+           char* _o3  = std::strtok(NULL,"|");  
+
+           string label = _s1;
+           int _s_id  = svo_graph.addVertex(label, "subject") ; 
+ 
+           label = _v1;
+           int _v_id  = svo_graph.addVertex(label, "verb") ;
+ 
+           label = _o1;
+           int _o_id  = svo_graph.addVertex(label, "object") ;
+      
+           svo_graph.addEdge(_s_id, _v_id, 1, "s_v"); 
+           svo_graph.addEdge(_v_id, _o_id, 1, "v_o");      
+           svo_graph.addEdge(_o_id, _s_id, 1, "o_s");  
+
+
+
 
       } else if (strcmp(s, "remove")  ==0)   {
 
@@ -1316,8 +1511,8 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
  
            std::string in_o  = o;   
            int _s_id;  
-           _s_id = svo_db.exists(in_o);  
-          output.sigs.push_back(_s_id);      
+           _s_id = svo_graph.exists(in_o);  
+           output.sigs.push_back(_s_id);      
 
 
       } else if (strcmp(s, "link")  ==0)   {
@@ -1326,8 +1521,8 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
            char* _from  = std::strtok(NULL,"->");  
            int i_to    =  atoi(_to);  
            int i_from  =  atoi(_from);  
-           svo_links.insert(i_to, i_from);
-           svo_links.insert(i_from, i_to); 
+           svo_graph.addEdge(i_to, i_from);
+           svo_graph.addEdge(i_from, i_to); 
            output.sigs.push_back(1);      
 
  
@@ -1343,16 +1538,18 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
            std::string in_s  =  _s;  
            std::string in_v  =  _v;  
-           std::string in_o  =  _o;   
-          // char* _output  = std::strtok(NULL,"->");  
+           std::string in_o  =  _o;    
+ 
 
            int _s_id;  
             try 
             {
-              _s_id = svo_db.exists(in_s); 
+              _s_id = svo_graph.exists(in_s); 
             }
+
             catch (const std::runtime_error& e) {
- 
+
+                  std::cout <<  "Vert not found"  << std::endl; 
                   std::cerr << "Error: " << e.what() << std::endl;
               
             }
@@ -1361,43 +1558,38 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
             try 
             { 
-                _v_ids = s_v.retrieve(_s_id); 
+                _v_ids = svo_graph.egoNet(_s_id, "s_v"); 
             }
             catch (const std::runtime_error& e) { 
+                  std::cout <<  "Vert not found"  << std::endl;
                   std::cerr << "Error 2: " << e.what() << std::endl;
                  
             }
+ 
 
+           int _v_id = _v_ids.front();  
+           string v = svo_graph.property(_v_id, "label");
+  
 
-
-           int _v_id = _v_ids.front(); 
-
-           string v = svo_db.retrieve(_v_id);
            if (in_v == v)
            {  
-               vector<int> _o_ids;
+
+                vector<int> _o_ids; 
 
                try {
-                    _o_ids = v_o.retrieve(_v_id); 
+                     _o_ids = svo_graph.egoNet(_v_id, "v_o");  
                    }
-                catch (const std::runtime_error& e) { 
- 
+                catch (const std::runtime_error& e) {  
+                   std::cout <<  "eroor 3"  << std::endl;
                    std::cerr << "Error 3: " << e.what() << std::endl; 
                }
+               
 
-               int _o_id = _o_ids.front(); 
-               string o = svo_db.retrieve(_o_id);
- 
-               char *out_s =  _s; //.c_str();
-               output.recs.push_back(out_s);   
+               int _o_id = _o_ids.front();   
+               string out_o = svo_graph.property(_o_id, "label");    
 
-               char *out_v ;
-
-               strcpy(out_v, v.c_str());
-               output.recs.push_back(out_v); 
-
-               char *out_o  ;
-               strcpy(out_o, o.c_str());
+               output.recs.push_back(o);    
+               output.recs.push_back(v);  
                output.recs.push_back(out_o);  
  /*
  
@@ -1443,27 +1635,7 @@ void replace_char(char *str, char find, char replace) {
 /*
   g++ -o triples_lang triples_lang.cpp
 ./triples_lang 2>err.log
-
-put t 6.77;
-pull t;
-
-set r hi;
-set p  meow;
-archive add r->p;
-archive definition hi;
-
-signals add 1->9;
-signals add 1->4;
-signals count 1;
-signals sum 1;
-signals last 1;
-
-knowledge add me|love|cat;
-knowledge exists me|love|cat;
-knowledge closest me|love|dog;
- extern "C" {
-    Geek* Geek_new(){ return new Geek(); }
-    void Geek_myFunction(Geek* geek){ geek -> myFunction(); }
+ 
 }
 
 
@@ -1560,11 +1732,16 @@ int main(int argc, char* argv[]) {
               	std::cout << i << " ";
              }
 
-             for (auto i: results.recs) {
-              	std::cout << i << " ";
+             for (auto word : results.recs) { 
+                std::cout <<  word << " "; 
              }
 
              std::cout << std::endl;
+ 
+              //for (auto s : results.recs) {
+               //   free(s);
+             // }
+
         }
     }
 
