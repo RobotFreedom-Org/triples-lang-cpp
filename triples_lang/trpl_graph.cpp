@@ -6,8 +6,8 @@
 #include <sstream> 
 #include <type_traits> 
 #include <map>
-using namespace std;
-  
+using namespace std; 
+ 
 
 double stringSimilarity(std::string first, std::string second) {
     int m = first.length();

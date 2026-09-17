@@ -26,8 +26,7 @@
  g++ -o triples_lang triples_lang.cpp
  ./triples_lang 
 
-*/
-
+*/ 
 
 #include <cstdio>
 #include <iostream>
@@ -43,7 +42,8 @@
 #include "ml/dec_tree.cpp"  
 #include "ml/dec_tree_continuious.cpp"  
 #include "ml/nn.cpp"   
-#include "ml/gd.cpp"    
+#include "ml/gd.cpp"     
+#include "ml/numap.cpp"    
  
 #include "encoding/run_length_binary.cpp"     
 #include "encoding/binning.cpp"    
@@ -59,6 +59,7 @@ Node* LoadedDecTreeModel;
 NeuralNetwork LoadedNeuralNetwork;
 DecisionTreeContinuous LoadedDecTreeContModel;
 Vector LoadedGradientDescent;
+NUMAP LoadedUMap;
   
     
 Archives archive;
@@ -778,7 +779,10 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
              LoadedNeuralNetwork.save(FileName);
         } else if (strcmp(mldType, "dectree")  ==0)   {  
 
-             LoadedDecTreeContModel.save(FileName);  
+             LoadedDecTreeContModel.save(FileName);   
+        } else if (strcmp(mldType, "umap")  ==0)   {  
+
+            LoadedUMap.save(FileName);
         }
 
      } else if (strcmp(s, "load")  ==0)   {
@@ -797,6 +801,10 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
         }  else if (strcmp(mldType, "dectree")  ==0)   {  
 
             LoadedDecTreeContModel.load(FileName);
+
+        } else if (strcmp(mldType, "umap")  ==0)   {  
+
+            LoadedUMap.load(FileName); 
         }
  
 
@@ -947,6 +955,34 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
           }   
         LoadedDecTreeContModel.fit(data);   
     
+
+     } else if (strcmp(s, "umap")  ==0)   {
+
+        char* _features = std::strtok(o  , "->");  
+        char* _label    = std::strtok(NULL,"->");   
+ 
+        vector<vector<double>> features; 
+        char *buffer ;
+        buffer = strtok(_features, "|");     
+
+        vector<float>  vals = memory_sig_rec.get_signals(buffer);    
+        std::vector<double> doubleVec(vals.begin(), vals.end());
+        features.push_back(doubleVec) ;  
+
+        buffer = strtok(NULL,"|");
+
+        //stack<vector<int>> myStack; // stack of vectors
+        int i_rec = -1;
+        while (buffer !=NULL)
+           {     
+             vals = memory_sig_rec.get_signals(buffer);  
+             doubleVec = std::vector<double>(vals.begin(), vals.end());
+             features.push_back(doubleVec) ;  
+             buffer = strtok(NULL,"|");
+           
+           } 
+
+       LoadedUMap.train(features);
 
      } else if (strcmp(s, "simulatedanneal")  == 0)   {  
      } else if (strcmp(s, "kmeans")  == 0)   {  
