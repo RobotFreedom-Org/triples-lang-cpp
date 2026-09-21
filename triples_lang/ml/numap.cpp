@@ -535,6 +535,7 @@ int test_numap() {
      numap.load("umap.refpt");
 
      std::vector<double> sim_data = embedded; //{8.34868, 5.58223, -12.4776 } ; 
+     //inverse_transform
      std::vector<double> gen      = numap.decode( sim_data) ;
 
     for (auto& col : gen) { 

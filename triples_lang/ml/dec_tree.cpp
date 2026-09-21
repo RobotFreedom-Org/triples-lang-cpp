@@ -361,9 +361,17 @@ Node* buildTree(
 
 // Function to classify a new instance
 string classify(Node* tree, const map<string, string>& instance) {
-    if (tree->isLeaf) return tree->label;
+
+
+    if (tree->isLeaf) return tree->label; 
     string value = instance.at(tree->feature);
-    if (tree->children.count(value)) {
+
+    //std::cout << "in"<< std::endl;  
+   // std::cout << value << std::endl;  
+   // std::cout << tree->children.count(value) << std::endl;  
+   // std::cout << "out"<< std::endl;  
+    
+    if (tree->children.count(value)) { 
         return classify(tree->children[value], instance);
     }
     return "-1";  
@@ -414,6 +422,7 @@ string dectree_inference(Node* tree ,  map<string, string> data   ) {
    */
    string output;
    try {    
+
          output =  classify(tree, data) ;
         //  releaseMem(tree);
      }
