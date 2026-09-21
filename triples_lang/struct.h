@@ -7,8 +7,31 @@ struct SVO {
   std::vector<float> sigs; 
   std::vector<std::string> recs;   
 }; 
+
+
+struct Event{
+  int cnt;
+  int level;
+  std::string  code; 
+};
+
  
-  
+struct Situation{
+   std::vector<std::string> prior_stimuli; 
+
+   std::string stimuli;
+   //move to a map
+
+   Event lifeforms  ;
+   Event humans ;
+   Event threat;
+   Event weather;
+   Event moving;
+   Event activity;
+   Event ambiance;
+   Event user_present;  
+
+};
 
 struct cmdsSVO { 
   char s[12];  

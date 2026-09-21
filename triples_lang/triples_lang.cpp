@@ -44,6 +44,7 @@
 #include "ml/nn.cpp"   
 #include "ml/gd.cpp"     
 #include "ml/numap.cpp"    
+#include "ml/nhdbscan.cpp"    
  
 #include "encoding/run_length_binary.cpp"     
 #include "encoding/binning.cpp"    
@@ -60,7 +61,9 @@ NeuralNetwork LoadedNeuralNetwork;
 DecisionTreeContinuous LoadedDecTreeContModel;
 Vector LoadedGradientDescent;
 NUMAP LoadedUMap;
-  
+NHDBSCAN LoadedNHDBScan;
+
+triplesspace::Situation CurrentSituation;
     
 Archives archive;
 Memory memory_sig_rec ;  
@@ -708,6 +711,29 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
       output.sigs.push_back(0);    
     }
 
+
+  } else if (strcmp(v, "situation")  ==0)   {
+
+
+    if (strcmp(s, "react")  ==0)   {
+         // situation react stimuli;å
+        // CurrentSituation 
+    }
+
+  } else if (strcmp(v, "strategy")  ==0)   {
+
+    if (strcmp(s, "identfy")  ==0)   {
+    // strategy identify optional; 
+    }
+
+  } else if (strcmp(v, "response")  ==0)   {
+
+    if (strcmp(s, "select")  ==0)   {
+    
+    }
+   // response select vocal; 
+   //response select movemenet;
+
    } else if (strcmp(v, "encoding")  ==0)     {
 
      if (strcmp(s, "bin")  ==0)   {
@@ -780,9 +806,14 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
         } else if (strcmp(mldType, "dectree")  ==0)   {  
 
              LoadedDecTreeContModel.save(FileName);   
+
         } else if (strcmp(mldType, "umap")  ==0)   {  
 
             LoadedUMap.save(FileName);
+
+        } else if (strcmp(mldType, "hdbscan")  ==0)   {  
+
+            LoadedNHDBScan.save(FileName);
         }
 
      } else if (strcmp(s, "load")  ==0)   {
@@ -805,6 +836,11 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
         } else if (strcmp(mldType, "umap")  ==0)   {  
 
             LoadedUMap.load(FileName); 
+
+        } else if (strcmp(mldType, "hdbscan")  ==0)   {  
+
+            LoadedNHDBScan.load(FileName); 
+
         }
  
 
@@ -984,45 +1020,131 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
        LoadedUMap.train(features);
 
+     } else if (strcmp(s, "hdbscan")  ==0)   {
+
+        char* _features = std::strtok(o  , "->");  
+        char* _label    = std::strtok(NULL,"->");   
+  
+
+        char *buffer ;
+        buffer = strtok(_features, "|");      
+        vector<float>  valsX = memory_sig_rec.get_signals(buffer); 
+        buffer = strtok(NULL,"|");
+        vector<float>  valsY = memory_sig_rec.get_signals(buffer); 
+        buffer = strtok(NULL,"|");
+        vector<float>  valsZ = memory_sig_rec.get_signals(buffer); 
+        int p = valsX.size();
+
+        std::vector<HDBSPoint> points;
+        for (int i = 0; i < p; ++i) {
+          
+            HDBSPoint pt;
+            pt.x = valsX[i];
+            pt.y = valsY[i];
+            pt.z = valsZ[i];
+            points.push_back(pt) ;  
+        }
+
+       std::vector<int> res = LoadedNHDBScan.fit(points, 3);
+
      } else if (strcmp(s, "simulatedanneal")  == 0)   {  
      } else if (strcmp(s, "kmeans")  == 0)   {  
      } else if (strcmp(s, "ltsm")  == 0)   {  
      } else if (strcmp(s, "cnn")  == 0)   {  
      } 
+
+   } else if (strcmp(v, "stimuli")  ==0)   {
+
+     if (strcmp(s, "sensor")  ==0)   {
+     }
+
+   } else if (strcmp(v, "recalculate")  ==0)   {
+
+     if (strcmp(s, "goals")  ==0)   {
+     }
+     else if (strcmp(s, "success")  ==0)   {
+     }
+
+   } else if (strcmp(v, "assess")  ==0)   {
+
+     if (strcmp(s, "emotion")  ==0)   {
+     }
+
+     else if (strcmp(s, "response")  ==0)   {
+     }
      
+   } else if (strcmp(v, "formulate")  ==0)   {
+
+     if (strcmp(s, "stratgey")  ==0)   {
+     }
+
+     else if (strcmp(s, "response")  ==0)   {
+     }
+
+   } else if (strcmp(v, "express")  ==0)   {
+
+     if (strcmp(s, "vocal")  ==0)   {
+     }
+
+     else if (strcmp(s, "movement")  ==0)   {
+     }
+
+
    } else if (strcmp(v, "reason")  ==0)   {
 
      if (strcmp(s, "present")  ==0)   {
 
-     } else if (strcmp(s, "future")  == 0)   {
+     } else if (strcmp(s, "link")  == 0)   {
+          // 
+          // umap 
+          //
 
-     } else if (strcmp(s, "past")  == 0)   {
+          // LoadedUMap
 
-     } else if (strcmp(s, "tree")  == 0)   {   
+     } else if (strcmp(s, "classify")  == 0)   {
+          // 
+          // hdbscan
+          // 
+
+          // LoadedNHDBScan
+
+
+     } else if (strcmp(s, "respond")  == 0)   {
+          // 
+          // hdbscan
+          // 
+
+          // LoadedNHDBScan
+
+     } else if (strcmp(s, "decide")  == 0)   {   
 
         int lcnt = 0;
         char *buffer ;
         string soutput;
-        size_t cnt = countCharOccurrences(o,'|');
- 
-        std::map<string, string> data; 
+        size_t cnt = countCharOccurrences(o,'|'); 
+        std::map<string, string> data;  
 
-        if (cnt == 2)
+        if (cnt > 1)
         {
-            buffer = strtok(o, "|");   
+            buffer = strtok(o, "|");    
             string _s = buffer  ;
             buffer = strtok(NULL, "|");   
             string _v = buffer  ;
             buffer = strtok(NULL, "|");   
             string _o = buffer  ; 
  
+           // char* l1 = 's';
+           // char* l2 = "v";
+           // char* l3 = "o";
             data.insert({"s",_s});  
             data.insert({"v",_v});  
             data.insert({"o",_o});  
-            string results = dectree_inference(LoadedDecTreeModel, data);    
-            char *out;
-            strcpy(out, results.c_str());
-            output.recs.push_back(out);   
+
+            string results = dectree_inference(LoadedDecTreeModel, data); 
+          // std::cout << results << std::endl;     
+           // char *out;
+           // strcpy(out, results.c_str());
+            output.recs.push_back(results);   
 
          
          }
@@ -1065,9 +1187,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
            }
            else
            { 
-              cols = 0;
-
-              cout << cols << "loading data"<< endl;
+              cols = 0; 
               buffer = strtok(currentline, delim); 
               colname = header[cols];      
               data.insert({colname,buffer});  
@@ -1084,10 +1204,13 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
            } 
            lcnt++;
 
-          } 
-           string results = dectree_inference(LoadedDecTreeModel, data);  
+
+           string results = dectree_inference(LoadedDecTreeModel, data);   
+
            output.recs.push_back(results);  
-          // data.clear();
+           data.clear();
+
+          } 
 
         }
       output.sigs.push_back(lcnt);      
@@ -1478,10 +1601,8 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
       }else if (strcmp(s, "linked")  == 0)   {  
 
-      }
- 
-     
- 
+      } 
+      
      
     } else if (strcmp(v, "knowledge")  == 0)   {
  
@@ -1767,6 +1888,7 @@ int main(int argc, char* argv[]) {
              for (auto i: results.sigs) {
               	std::cout << i << " ";
              }
+
 
              for (auto word : results.recs) { 
                 std::cout <<  word << " "; 
