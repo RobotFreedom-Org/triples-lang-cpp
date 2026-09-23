@@ -1,4 +1,4 @@
-# <img src="./robot_freedom_ai/assets/logo_small.png" width="40">  Triples-Lang 
+# <img src="./triples-logo.png" width="40">  Triples-Lang 
 
 Welcome to the official robotic langauage call Triples maintained by RobotFreedom.org. This code is designed to help students of all ages get hands on experience with AgenticAI platforms.  
 
@@ -43,8 +43,18 @@ First, download this repro and unzip it on your Desktop or projects folder. Then
 ## Getting Started
 
 Triples-Lang is designed as a secure language for AI agents and not inteneded to compete other languages like Java, Python or C++. 
+ 
+To run a Triples-Lang script provide the file name when running triples_lang.
 
-To run Triples-Lang you need to first install the software on a Arduino using the Arduino IDE. You can then inteact with Triples-Lang using either the Serial Monitor tool of running serial_com.py
+```bash 
+python3 ./triples_lang ../examples/add.trpl
+```   
+
+You can also enter interactive mode by  running triples_lang without a pass parameter
+
+```bash 
+python3 ./triples_lang
+```    
  
 Help provides a list of avaible commands.
 
