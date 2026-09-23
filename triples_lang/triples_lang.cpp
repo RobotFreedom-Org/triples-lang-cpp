@@ -97,7 +97,81 @@ int current_str_mem  = -1;
 int current_flt_mem  = -1;
 int loaded_routine   = -1;
 
+map<string ,string> cmdLookup;
 
+
+
+std::vector<std::string> splitIgnoringQuotes(const std::string& text) {
+    std::vector<std::string> tokens;
+    bool inQuotes = false;
+    std::string currentToken;
+
+    for (char c : text) {
+        if (c == '"') {
+            inQuotes = !inQuotes;
+        } else if (c == ' ') {
+            if (!inQuotes) {
+                if (!currentToken.empty()) {
+                    tokens.push_back(currentToken);
+                    currentToken.clear();
+                }
+            } else {
+                currentToken += c;  
+            }
+        } else {
+            if (!inQuotes) {
+                currentToken += c;
+            } else {
+                currentToken += c;  
+            }
+        }
+    }
+    if (!currentToken.empty()) {
+        tokens.push_back(currentToken);
+    }
+    return tokens;
+}
+
+void initCommands( ) 
+
+{
+
+    char *buffer ;
+    FILE *filePtr;  
+    char currentline[1000];  
+    string sfile = "./docs/docs.txt";
+    filePtr = fopen(sfile.c_str(), "r");  
+    vector<string> doc;
+
+    while (fgets(currentline , 1000, filePtr))
+    {       
+      doc = splitIgnoringQuotes(currentline);
+
+      cmdLookup[doc[0]] =  doc[1] + " " + doc[2];  
+      
+    }
+
+//   cmdLookup["routine"] = ""; 
+//   cmdLookup["archive"] = "";
+ //  cmdLookup["signals"] = "";
+  // cmdLookup["knowledge"] = "";
+ //  cmdLookup["learner"] = "";
+ //  cmdLookup["reason"] = ""; 
+
+}
+ 
+string findCommand(string value)
+{
+   for (const auto &kv : cmdLookup) { 
+   
+       double sim = stringSimilarity(value, kv.first);
+   
+       if (sim > .5){
+           return kv.first;
+      }
+     } 
+  return " ";
+}
 
 void initRoutine(int routineId) {
   int _max = MAX_CMDS - 1;
@@ -107,6 +181,7 @@ void initRoutine(int routineId) {
        strcpy(ROUTINES[routineId][i].v, ""); 
   }
 }
+
 
 void initBlock(int blockId) {
   int _max = MAX_CMDS - 1;
@@ -477,8 +552,18 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
  
  
 
-  if (strcmp(v, "help")   == 0  ) {  
-      // Serial.println("set,get,echo,add,subtract,divide,multiple,increment,decrement,more,less,equal,different,flow,routine,help");
+  if (strcmp(v, "help")   == 0  ) {   
+
+         auto it = cmdLookup.find(s);
+         
+         if (it != cmdLookup.end()) { 
+             output.recs.push_back(it->second);   
+         }
+         else
+         {
+             output.recs.push_back("Not found");   
+
+         }
   } 
   else if (strcmp(v, "annotation") ==0){
       
@@ -1142,8 +1227,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
             string results = dectree_inference(LoadedDecTreeModel, data); 
           // std::cout << results << std::endl;     
-           // char *out;
-           // strcpy(out, results.c_str());
+           // char *out; 
             output.recs.push_back(results);   
 
          
@@ -1304,7 +1388,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
             
           output.recs.reserve(resp.size());  
           for (auto& s : resp) { 
-              output.recs.push_back(const_cast<char*>(s.c_str()));
+              output.recs.push_back(s);
           }   
  
       } else if (strcmp(s, "response")  == 0)   {    //defition
@@ -1316,7 +1400,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
           vector<string> resp = archive.definition(_mess) ;    
           output.recs.reserve(resp.size());  
           for (auto& s : resp) { 
-              output.recs.push_back(const_cast<char*>(s.c_str()));
+              output.recs.push_back(s );
           }    
       } else if (strcmp(s, "match")  == 0)   { 
   
@@ -1428,20 +1512,14 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
      } else if (strcmp(s, "last")  == 0)   {  
   
              vector<string> resp  =  memory_sig_rec.get_records( o );  
-             string val =  resp.back(); 
-             char *out;
-             strcpy(out, val.c_str());
-             output.recs.push_back( out);   
+             string val =  resp.back();  
+             output.recs.push_back( val);   
 
      } else if (strcmp(s, "first")  == 0)    { 
-          
- 
+           
              vector<string> resp  = memory_sig_rec.get_records( o );  
-             string val =  resp.back();  
-
-             char *out;
-             strcpy(out, val.c_str());
-             output.recs.push_back( out);      
+             string val =  resp.back();   
+             output.recs.push_back( val);      
              
 
      } else if (strcmp(s, "distance")  == 0)   { 
@@ -1747,13 +1825,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
 
                output.recs.push_back(o);    
                output.recs.push_back(v);  
-               output.recs.push_back(out_o);  
- /*
- 
-               strcpy(output.s, in_s.c_str());
-               strcpy(output.v, v.c_str());
-               strcpy(output.o, o.c_str());   
- */
+               output.recs.push_back(out_o);   
               }
           
       } else if (strcmp(s, "related")  == 0)   { 
@@ -1762,7 +1834,7 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
          // int keyId =  props.similar(key) ;  
          // int respId = edges.search(keyId) ; 
          // std::string resp = props.search(respId);     
-         // strcpy(output.o, resp.c_str());   
+         // strcpy(output.o, resp );   
 
       } else if (strcmp(s, "relatives")  == 0)   { 
          //alll object lin to best match for svo
@@ -1770,11 +1842,25 @@ struct triplesspace::SVO core(char *v , char *s , char *o ) {
          // int keyId =  props.similar(key) ;  
          // int respId = edges.search(keyId) ; 
          // std::string resp = props.search(respId);     
-         // strcpy(output.o, resp.c_str());  
+         // strcpy(output.o, resp );  
       }
- 
+     }
+     else
+     {
+
+               output.recs.push_back("command ");   
+               output.recs.push_back(v);    
+               output.recs.push_back(" not found.\n");    
+
+               string res =  findCommand(v);
+               if ( res != " ")  { 
+                    output.recs.push_back("Did you mean ");   
+                    output.recs.push_back(res ); 
+                    output.recs.push_back("?\n" ); 
+               } 
     
-     } 
+
+      } 
 
   return output;
  
@@ -1797,18 +1883,97 @@ void replace_char(char *str, char find, char replace) {
 
 
 */
+
+std::string clean_cmd(std::string str)
+{
+    if (str.back() == ';')
+    {
+        int i = str.size() -1;
+        return str.substr(0, i);
+    }
+    return str;
+}
+
+
 extern "C" { 
     void dispatch(char *v, char *s, char *o){  dispatcher(v,s,o); }
 } 
 int main(int argc, char* argv[]) {
     
- 
+    initCommands();
     if (argc > 1)
     { 
-        FILE *filePtr;     
-        filePtr = stdin;  
-        sort(filePtr);
+       // FILE *filePtr;     
+       // filePtr = stdin;  
+      //  sort(filePtr);
         //select(filePtr);
+        string s_arg = argv[1];
+
+        char *buffer ;
+        FILE *filePtr;  
+        char currentline[1000];  
+     
+        filePtr = fopen(s_arg.c_str(), "r");  
+        vector<string> doc;
+    
+        while (fgets(currentline , 1000, filePtr))
+        {        
+
+             string incmd = currentline;
+             vector <string> ary_cmds = splitIgnoringQuotes(incmd); 
+             char* v = new char[ary_cmds[0].size() + 1];
+             std::strcpy(v, ary_cmds[0].c_str());   
+    
+             string instr;
+
+             if (ary_cmds.size() > 1)
+             {
+                 instr = clean_cmd(ary_cmds[1]) ; 
+              }
+             else
+             {
+                 instr = "";
+             } 
+
+             char* s = new char[instr.size() + 1];
+             std::strcpy(s, instr.c_str()); 
+
+             if (ary_cmds.size() > 2)
+             {
+                 instr = clean_cmd(ary_cmds[2]) ; 
+              }
+             else
+             {
+                 instr = "";
+             }
+   
+             char* o = new char[instr.size() + 1];
+             std::strcpy(o, instr.c_str()); 
+
+           
+          struct triplesspace::SVO results; 
+
+
+          try 
+             {
+                  results = dispatcher(v, s, o); 
+             }
+          catch(const std::exception& e)
+             {  
+                  std::cout << "Error occured " << e.what() << std::endl;
+             } 
+
+          for (auto i: results.sigs) {
+              	std::cout << i << " ";
+             } 
+
+          for (auto word : results.recs) { 
+                std::cout <<  word << " "; 
+             }
+
+          std::cout << std::endl; 
+        } 
+
     } 
     else
     {
@@ -1822,8 +1987,7 @@ int main(int argc, char* argv[]) {
             break;
         }
  
-
-        // Convert to lowercase for case-insensitive commands
+ 
         std::string cmd = input;
         //std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
 
@@ -1832,63 +1996,82 @@ int main(int argc, char* argv[]) {
             break;
         } 
         else if (cmd == "help;") {
-            std::cout << "Available commands:\n"
-                      << "  help  - Show this help message\n"
-                      << "  set,get,echo,add,subtract,divide,multiple,increment,decrement,more,less,equal,different,flow,routine \n"
-                      << "  exit  - Quit the program\n";
+ 
+            std::cout << "help  - Show this help message\n"  ;
+            std::cout << "exit  - Quit the program\n";
+            std::cout << "Keywords\n";
+            int i = 0;
+            int totalWidth = 12;
+            string cmd ;
+            for (const auto &kv : cmdLookup) {  
+
+                 cmd = kv.first ;
+                 if (cmd.size() < totalWidth) {
+                   cmd.insert(0, totalWidth - cmd.size(), ' '); // left pad
+                 }
+                std::cout <<  cmd << "    "; 
+                i++;
+                if (i ==4)
+                {
+                  i =0;
+                   std::cout << "\n";
+                }
+              }  
+            std::cout << "\n";  
         }  
         else if (cmd.empty()) {
             // Ignore empty input
             continue;
         } 
-        else {
-         
-             char *s;   
-             char *v;      
-             char *o;    
+        else 
+        {
+            
+             string incmd = cmd;
+             vector <string> ary_cmds = splitIgnoringQuotes(incmd); 
+             char* v = new char[ary_cmds[0].size() + 1];
+             std::strcpy(v, ary_cmds[0].c_str());  
+             
+             string instr;
 
-             char* cstr = new char[cmd.length() + 1];
-             strcpy(cstr, cmd.c_str());
+             if (ary_cmds.size() > 1)
+             {
+                 instr = clean_cmd(ary_cmds[1]) ; 
+              }
+             else
+             {
+                 instr = "";
+             } 
 
-             v = std::strtok(cstr, " ");  
-             s = std::strtok(NULL, " ");  
-             try
+             char* s = new char[instr.size() + 1];
+             std::strcpy(s, instr.c_str()); 
+
+             if (ary_cmds.size() > 2)
              {
-                 o = std::strtok(NULL, " ");   
-             }
-             catch(const std::exception& e)
-             { 
-                o = new char[cmd.length() + 1];
-             }
-               
-     
-             replace_char(v,';', '\0'); 
-             replace_char(s,';', '\0'); 
-             try
+                 instr = clean_cmd(ary_cmds[2]) ; 
+              }
+             else
              {
-                 replace_char(o,';', '\0');  
+                 instr = "";
              }
-             catch(const std::exception& e)
-             {  
-                o = new char[cmd.length() + 1];
-             }
-               
+   
+             char* o = new char[instr.size() + 1];
+             std::strcpy(o, instr.c_str()); 
+
              struct triplesspace::SVO results;
+  
 
-             try {
-                  results =dispatcher(v,s,o); 
+             try 
+             {
+                  results = dispatcher(v, s, o); 
              }
              catch(const std::exception& e)
              {  
                   std::cout << "Error occured " << e.what() << std::endl;
-             }
-               
+             } 
 
-             // std::cout << results.o;
              for (auto i: results.sigs) {
               	std::cout << i << " ";
-             }
-
+             } 
 
              for (auto word : results.recs) { 
                 std::cout <<  word << " "; 
@@ -1898,8 +2081,8 @@ int main(int argc, char* argv[]) {
  
               //for (auto s : results.recs) {
                //   free(s);
-             // }
 
+              // } 
         }
     }
 

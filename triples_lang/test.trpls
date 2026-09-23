@@ -1,0 +1,12 @@
+records load  sensor_reading.csv;  
+learner tree Distance|Noise|Movement|Touch->Label; 
+learner save  tree->sensor.tree;
+learner load  tree->sensor.tree; 
+reason  decide sensor_reading.csv;  
+records load facts.csv;  
+learner tree s|v|o->Label; 
+learner save tree->fact.tree;
+learner load tree->fact.tree;
+reason decide facts.csv;   
+reason decide me|love|cat|;  
+echo done;
