@@ -1,0 +1,58 @@
+file "file read mylog.log;" read|close
+create "create function my_function;" 
+execute "execute my_function;" 
+interact "interact sockets;  sent; interact end;" if|also|else|start|end|
+log "log error.log;" 
+reminder "reminder 120 eat;" 
+initate "intiate sleep;" sleep|reflexion|security|sweep|protocol|listen|patrol|monitor|chat
+settings "set chat_settings rude;" get|set|voice|chat|network|location|mood|chat_engine|chat_settings|time|name|personality
+chat "chat 'how are you'@number_3;" 
+move "move forward;" forward|left|right|backwards
+assign "assign number_3;" forward|left|right|backwards
+dialogue "run myscript.csb;" 
+status "status;" 
+safty "safty off;" off|on
+halt "halt;" sleep|reasoning|security|scan
+speak "speak 'hello there';" 
+test "test sound;" sound|movment|lights|voice
+nerves "nerves get cmd:safty;" get|set
+diagnostics "diagnostics;" 
+scan "scan ble;" wifi|ble|serial|environment
+send "send number_2 'hello';" network|ble
+check "check network number_2 'hello';" network|ble
+decrement "set v1 4;   decrement v1;" |
+increment "set v1 4;   increment v1;" |
+add "set v1 4; set v2 4; add v1 v2;" |
+substract "set v1 4; set v2 4; substract v1 v2;" |
+multiply "set v1 4; set v2 4; multiply v1 v2;" |
+divide "set v1 4; set v2 4; divide v1 v2;" |
+calculate "calculate 1+3;" 
+roll "roll 6d;" 
+analysis "analysis mean touch;" max|min|mean|trend|predicted|summarize|correlate|relationship|all|touch|noise|balence|tempature
+readings "reading;" 
+monitor "sim touch" light|noise|touch|temparture
+simulate "simulate touch" light|noise|touch|temparture
+echo "echo hello myscript.sh ;" 
+memory "memory  ;" 
+run "run myscript.trlp;" 
+get "set v1 2; get v1;" 
+set "set v1 20;" 
+pop "ltm set svo {'s':'', 'o':'','v':''};" 
+next "ltm set svo {'s':'', 'o':'','v':''};" 
+structure "set v2 'sue';   structure start;  set 'name' =  v1  structure end;" if|also|else|start|end
+different "set v1 4; set v2 3; different v1 v2;" |
+equal "set v1 4; set v2 3; equal v1 v2;" |
+more "set v1 4; set v2 3;more v1 v2;" |
+less "set v1 4; set v2 3;less v1 v2;" |
+routine "routine function my_function;" create|execute|alter|store
+knowledge "knowledge start; 'i', 'iike' 'triples' knowledge end;" if|also|else|start|end
+access "access current emotion;" weather|news|time|date|location|events|
+define "define turtle;" word
+identity "identity add sally;" add|remove|alter
+security "security user add ;" add|remove|alter
+join "set v1 hello; set worl 4; join v1 v2;" |
+media "media show image->myimage.jpeg;" image|graph
+temporal "temporal difference datestart->dataend;" difference|pause
+time "time;" 
+date "date;" 
+flow "set v2 0; set v2 0; flow if start;  equal v1 v2; execute browser; flow if end;" if|also|else|start|end|
